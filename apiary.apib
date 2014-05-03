@@ -1,0 +1,681 @@
+FORMAT: 1A
+HOST: https://ehacktivities.lukegb.com
+
+# eHacktivities
+eHacltivities is a screen-scraping, gogetting API for eActivities, the Imperial
+College Union finance/management system.
+
+eHacktivities may only be accessed via HTTPS.
+
+{year} in URLs always refers to the year in which the academic year started.
+For example, for the academic year 2013-14, "2013" should be specified.
+
+All monies are quoted in pence.
+
+Dates/Date-times are in ISO8601 strings.
+
+All string fields shall be trimmed of whitespace.
+
+This specification must be implemented in a sane fashion, where sane is defined in the frame of reference of the specification writers.
+That is to say; implementations must follow the spirit (in addition to the letter) of the implementation. Any dichotomy thus introduced
+is to be resolved by discussion amongst the authors.
+
+An HTTP 401 will be returned to all clients not sending an appropriate 'Authorization: jwt' header, unless
+the request is directed to /session under the POST method.
+
+'Authorization: jwt' headers should be sent as follows:
+
+'Authorization: jwt token=[jwt-token]', where [jwt-token] is that returned from the /session endpoint.
+
+Various financial documents have "status" fields (e.g. POs, claims). They have the following possibilities:
+
+  * COMPLETED - this document has been fully processed and money has been added/removed from club accounts as appropriate.
+  * PENDING - this document is pending approval.
+  * QUERIED - this document has been queried by finance.
+  * AWAITING_GOODS - this document is awaiting goods receipting and invoicing.
+  * AWAITING_INVOICE - this document is awaiting invoicing.
+  * CANCELLED - this document has been cancelled.
+  
+Any additional statuses will be added as/when they arise.
+
+## Integrity Checking
+
+eHacktivities will attempt to perform some sanity checking of the results it returns.
+As eActivities is an ever-evolving system, sometimes the format of returned pages may change
+in a way eHacktivities cannot cope with.
+
+If this occurs, eHacktivities will return (note that the text provided is an example error message):
+
++ Response 502 (text/plain)
+
+        eHacktivities was unable to decode any part of the returned data.
+        
+Sometimes new fields may be added. If this is the case, then:
+
+  * For a `GET` (read) request, eHacktivities will add a `X-EHacktivities-Integrity: Unsure` header.
+  * For a `POST`/`PUT`/`DELETE` (write) request, eHacktivities will return `502 Bad Gateway`, as above.
+  
+## Past Years
+
+Some data is not avaiable for years other than the current one. In this case, when
+the data is requested, eHacktivities will return `410 Gone`.
+
+# Group Sessions
+Resource for creating and destroying sessions.
+
+## JWT Response
+
+        { "jwt": "xxxxxxxxxxxx", "expires": "2014-01-02T15:33:23" }
+
+## Session [/session]
+### Get details of your session [GET]
++ Response 200 (application/json)
+
+        { "username": "leg13", "created": "2014-01-01T13:33:23", "expires": "2014-01-02T15:33:23" }
+
+### Create session [POST]
+
+Requests of this type without an appropriate 'Authorization: Basic' header will be rejected
+with an HTTP 401 response with the 'WWW-Authenticate: Basic' header. Clients should send a standard
+HTTP Basic response with the username and password combination to be used with eActivities,
+successful completion of which will result in a 201 as defined below. A failed authentication will
+result in a 403. 
+        
++ Response 201 (application/json)
+
+        [JWT Response][]
+
+### Renew session [POST]
+
+This request renews an extant session.
+
++ Request (application/json)
+
+        { "jwt": "xxxxxxxxxxxx" }
+
++ Response 201 (application/json)
+
+        [JWT Response][]
+
+### Destroy your session [DELETE]
++ Response 204
+
+# Group Clubs
+Resource for representing CSPs.
+
+## Club collection [/clubs]
+### Get list of clubs [GET]
++ Response 200 (application/json)
+
+        { "411": {"id": 411, "name": "ICU Cinema"} }
+    
+## Club [/clubs/{id}]
+### Get club details [GET]
+
+The response for this section may be missing some elements if your currently
+authenticated eActivities session does not have permission to view that data point.
+
++ Response 200 (application/json)
+
+        {
+            "id": 411,
+            "name": "ICU Cinema",
+            "active": true,
+            "website": "https://union.ic.ac.uk/arts/filmsoc/",
+            "email": "filmsoc@imperial.ac.uk",
+            "current_profile_entry": ["Text", "here"],
+            "membership": {
+                "full_members": 342,
+                "full_members_quota": 120,
+                "membership_cost": 500,
+                "associate_members": 11
+            }
+        }
+
+# Group Club Financials
+
+## Audit Trail
+
+The user who committed the purchase order will always be the zero-th element in this array.
+
+        [
+            {"name": "Bob Jones", "role": "Junior Treasurer (A&E ICU Cinema)", "notes": "Bob Jones (Junior Treasurer (A&E ICU Cinema)) committed Purchase Order (15000)", "date": "2013-12-12"},
+            {"name": "Alice Branch", "role": "Junior Treasurer (A&E ICU Cinema)", "notes": "Alice Branch (Chair (A&E ICU Cinema)) authorised Purchase Order (15000)", "date": "2013-12-12"},
+            {"name": "Samantha Smith", "role": "Management Group Chair/Treasurer (A&E (Arts & Entertainments Clubs))", "notes": "Samantha Smith (Arts & Entertainments Clubs Treasurer (A&E (Arts and Entertainments Clubs))) fully approved Purchase Order (15000)", "date": "2013-12-31"}
+        ]
+
+## Next Authorisers
+
+        [
+            {"name": "Alistair McDuff", "role": "ICU DP (F&S) (The Organisation)"},
+            {"name": "Jonny Jones", "role": "ICU DP (C&S) (The Organisation)"}
+        ]
+        
+## VAT Rate
+
+        {
+            "id": 4,
+            "name": "Full Rate"
+        }
+
+## Transaction Line
+
+If the transaction line does not actually yet exist, it will have no 'id' field.
+The 'value' field may contain the 'net' field, the 'gross' field, or both.
+The 'vat' field may be missing if this information cannot be determined.
+If ever supplying this object, the 'account', 'activity', 'funding_source',
+'consolidation', and 'vat' fields should be provided as integer IDs instead of objects.
+Note that in certain circumstances the 'funding_source' and 'consolidation' objects
+may not be available.
+
+        {
+            "id": 1234,
+            "description": "Things",
+            "value": {
+                "net": 12129,
+                "gross": 12378,
+                "vat": {
+                    "rate": 4,
+                    "value": 1.175
+                }
+            },
+            "account": {"id": 450, "name": "Somethings"},
+            "activity": {"id": 0, "name": "General"},
+            "funding_source": {"id": 1, "name": "SGI"},
+            "consolidation": {"id": 0, "name": "External"}
+        }
+
+## Transaction Line Set
+
+        {
+            "non_existant": [[Transaction Line][]],
+            "1234": [Transaction Line][]
+        }
+
+
+## Club Financial Overview [/clubs/{id}/{year}/finances]
+### Get financial overview [GET]
++ Response 200 (application/json)
+
+        {
+            "funding_sources": [
+                {"name": "Grant", "id": 0, "total": 0},
+                {"name": "SGI", "id": 1, "total": 117925},
+                {"name": "Harlington", "id": 2, "total": 0}
+            ]
+        }
+        
+## Club Internal Charges Overview [/clubs/{id}/{year}/finances/internal-charges]
+
+It is believed that internal charges can only have the following statuses:
+
+  * COMPLETED
+  * PENDING
+  * CANCELLED
+
+  
+### Get list of club's internal charges [GET]
++ Response 200 (application/json)
+
+        {
+            "2151": {
+                "id": 2151,
+                "charged_committee": {"id": 411, "name": "A&amp;E ICU Cinema"},
+                "receiving_committee": {"id": 406, "name": "A&amp;E Dramatic Society"},
+                "gross_amount": 9000,
+                "status": "PENDING"
+            },
+            "2152": {
+                "id": 2152,
+                "charged_committee": {"id": 406, "name": "A&amp;E Dramatic Society"},
+                "receiving_committee": {"id": 411, "name": "A&amp;E ICU Cinema"},
+                "gross_amount": 200,
+                "status": "COMPLETED"
+            },
+        }
+        
+## Club Internal Charge Detail [/clubs/{id}/{year}/finances/internal-charges/{charge-id}]
+### Get internal charge detail [GET]
++ Response 200 (application/json)
+
+        {
+            "id": 2152,
+            "audit_trail": [Audit Trail][],
+            "next_authorisers": [Next Authorisers][],
+            "charged_committee": {
+                "id": 406, "name": "A&amp;E Dramatic Society",
+                "transaction_lines": [Transaction Line Set][]
+            },
+            "receiving_committee": {
+                "id": 411, "name": "A&amp;E ICU Cinema",
+                "transaction_lines": [Transaction Line Set][]
+            },
+            "notes": "For the road",
+            "gross_amount": 200,
+            "status": "COMPLETED"
+        }
+        
+## Club Transaction Corrections Overview [/clubs/{id}/{year}/finances/transaction-corrections]
+
+It is believed that transaction corrections can only have the following statuses:
+
+  * COMPLETED
+  * PENDING
+  * CANCELLED
+
+### Get list of club's transaction corrections [GET]
++ Response 200 (application/json)
+
+        {
+            "2151": {
+                "id": 2151,
+                "status": "COMPLETED",
+                "gross_amount": 9000
+            },
+        }
+        
+## Club Transaction Correction Detail [/clubs/{id}/{year}/finances/transaction-corrections/{correction-id}]
+### Get detail on a transaction correction [GET]
++ Response 200 (application/json)
+
+        {
+            "id": 2152,
+            "audit_trail": [Audit Trail][],
+            "next_authorisers": [Next Authorisers][],
+            "status": "COMPLETED",
+            "notes": "For the road",
+            "gross_amount": 200,
+            "from_transaction_lines": [Transaction Line Set][],
+            "to_transaction_lines": [Transaction Line Set][],
+        }
+
+## Club Purchase Orders Overview [/clubs/{id}/{year}/finances/purchase-orders]
+
+It is believed that purchase orders can only have the following statuses:
+
+  * COMPLETED
+  * PENDING
+  * AWAITING_GOODS
+  * AWAITING_INVOICE
+  * CANCELLED
+
+
+### Get list of club's POs [GET]
++ Response 200 (application/json)
+
+        {
+            "15000": {
+                "id": 15000,
+                "supplier": {"name": "EINPROGRESS Inc."},
+                "status": "COMPLETED",
+                "invoice_received": true,
+                "finished_goods_receipting": true,
+                "pro_forma": false,
+                "payment_date": "2014-01-01",
+                "gross_amount": 9000
+            }
+        }
+        
+## Club Purchase Order Detail [/clubs/{id}/{year}/finances/purchase-orders/{po-id}]
+### Get purchase order detail [GET]
++ Response 200 (application/json)
+
+        {
+            "id": 15000,
+            "audit_trail": [Audit Trail][],
+            "next_authorisers": [Next Authorisers][],
+            "supplier": {"name": "EINPROGRESS Inc.", "address": ["123 Fake Street", "Fakeville", "Faketown", "FK01 2QQ"]},
+            "status": "COMPLETED",
+            "invoice_received": true,
+            "finished_goods_receipting": true,
+            "pro_forma": false,
+            "delivery_instructions": "",
+            "payment_date": "2014-01-01",
+            "gross_amount": 9000,
+            "transaction_lines": [Transaction Line Set][],
+            "invoices": [2555]
+        }
+        
++ Response 200 (application/pdf)
+
+        [a PDF representing the PO]
+        
+## Club Purchase Order Invoice [/clubs/{id}/{year}/finances/purchase-orders/{po-id}/{invoice-id}]
+### Get an invoice relating to a purchase order [GET]
++ Response 200 (application/pdf)
+
+        [a PDF representing the PO's Invoice]
+        
+## Club Claim Overview [/clubs/{id}/{year}/finances/claims]
+
+It is believed that claims can only have the following statuses:
+
+  * COMPLETED
+  * PENDING
+  * QUERIED
+  * CANCELLED
+
+### Get list of club's claims [GET]
++ Response 200 (application/json)
+
+        {
+            "15000": {
+                "id": 15000,
+                "person": "Luke Granger-Brown",
+                "status": "COMPLETED",
+                "payment_date": "2014-01-01",
+                "gross_amount": 9000
+            }
+        }
+        
+## Club Claim Detail [/clubs/{id}/{year}/finances/claims/{claim-id}]
+### Get claim detail [GET]
++ Response 200 (application/json)
+
+        {
+            "id": 15000,
+            "audit_trail": [Audit Trail][],
+            "next_authorisers": [Next Authorisers][],
+            "person": "Luke Granger-Brown",
+            "status": "COMPLETED",
+            "payment_date": "2014-01-01",
+            "gross_amount": 9000,
+            "transaction_lines": [Transaction Line Set][],
+            "receipts": [2555]
+        }
+        
+## Club Claim Receipt [/clubs/{id}/{year}/finances/claims/{claim-id}/{receipt-id}]
+### Get claim receipt [GET]
++ Response 200 (application/pdf)
+
+        [a PDF representing the receipt]
+        
+## Club Banking Records [/clubs/{id}/{year}/finances/banking-records]
+### Get banking records [GET]
++ Response 200 (application/json)
+
+        {
+            "15000": {"id": 15000, "gross_amount": 102299}
+        }
+        
+## Club Banking Records Detail [/clubs/{id}/{year}/finances/banking-records/{record-id}]
+### Get banking record detail [GET]
++ Response 200 (application/json)
+
+        {
+            "id": 15000,
+            "gross_amount": 102299,
+            "transaction_lines": [Transaction Line Set][],
+            "paying_in_slips": [2555]
+        }
+        
+## Club Banking Records Paying In Slip [/clubs/{id}/{year}/finances/banking-records/{record-id}/{paying-in-slip-id}]
+### Get paying in slip [GET]
++ Response 200 (application/pdf)
+
+        [a PDF representing the paying in slip]
+        
+## Club Sales Invoices [/clubs/{id}/{year}/finances/sales-invoices]
+
+It is believed that sales invoices can only have the following statuses:
+
+  * COMPLETED
+  * PENDING
+  * CANCELLED
+
+### Get club sales invoices [GET]
++ Response 200 (application/json)
+
+        {
+            "15000": {
+                "id": 15000,
+                "date": "2014-01-01",
+                "customer": {
+                    "name": "EINPROGRESS Inc."
+                },
+                "purchase_order_number": "12020123",
+                "status": "COMPLETED",
+                "gross_amount": 900
+            }
+        }
+        
+## Club Sales Invoice Detail [/clubs/{id}/{year}/finances/sales-invoices/{invoice-id}]
+### Get a club sales invoice [GET]
++ Response 200 (application/json)
+
+        {
+            "id": 15000,
+            "date": "2014-01-01",
+            "customer": {
+                "name": "EINPROGRESS Inc.",
+                "address": ["123 Fake Street", "Fakeville", "Faketown", "FK01 2QQ"],
+                "contact": {
+                    "name": "Christopher Steadman",
+                    "phone": "01245389000",
+                    "email": "c.steadman@einprogress.io"
+                }
+            },
+            "audit_trail": [Audit Trail][],
+            "next_authorisers": [Next Authorisers][],
+            "customer_purchase_order_number": "12020123",
+            "status": "COMPLETED",
+            "gross_amount": 900,
+            "international": false,
+            "transaction_lines": [Transaction Line Set][],
+            "purchase_order_attachments": [255]
+        }
+        
++ Response 200 (application/pdf)
+
+        [a PDF representing the invoice]
+        
+## Club Sales Invoice Purchase Order [/clubs/{id}/{year}/finances/sales-invoices/{invoice-id}/{po-id}]
+### Get a club sales invoice purchase order attachment [GET]
++ Response 200 (application/pdf)
+
+        [a PDF representing the PO attachment]
+        
+# Group Club Membership
+
+## Club Member
+
+        {
+            "date": "2013-02-02",
+            "order_no": "215615",
+            "cid": "01234567",
+            "login": "leg13",
+            "first_name": "Luke",
+            "last_name": "Granger-Brown",
+            "email": "leg13@imperial.ac.uk",
+            "membership_type": "full",
+            "key_list_memberships": {
+                "active": {
+                    "411": [49]
+                },
+                "inactive": {}
+            }
+        }
+
+## Club Membership Information [/clubs/{id}/{year}/members]
+### Get information about a club's membership [GET]
++ Response 200 (application/json)
+
+        {
+            "full": {
+                "01234567": [Club Member][]
+            },
+            "associate": {
+                "AM-215151": [Club Member][],
+                "unknown": [
+                [Club Member][]
+                ]
+            }
+        }
+
+## Club Member Information [/clubs/{id}/{year}/members/{membership-type}]
+### Get information about members of a club of a specific type [GET]
++ Response 200 (application/json)
+
+        {
+            "01234567": [Club Member][],
+            "unknown": [
+                [Club Member][]
+            ]
+        }
+
+## Club Member Information [/clubs/{id}/{year}/members/{membership-type}/{cid}]
+## Club Member Information [/clubs/{id}/{year}/members/{cid}]
+### Get information about a club's membership [GET]
++ Response 200 (application/json)
+
+        [Club Member][]
+        
+# Group Club Shop Products
+
+Shop products can have one of four product types:
+
+  * WORLD - product available to everyone
+  * COLLEGE - product available to all College people
+  * MEMBERS - product available to club members
+  * NON-MEMBERS - product available to non-club members
+  
+Shop products can have one of two "field" types:
+
+  * LIST - list of options
+  * DROPDOWN - dropdown of options
+  
+Note that this only affects anything if you have multiple SKUs.
+
+## Club Shop Product Overview [/clubs/{id}/{year}/products]
+### Get a list of available shop products [GET]
++ Response 200 (application/json)
+
+        {
+            "4604": {
+                "name": "My Favourite Cat",
+                "submitted_by": "Anthony Smith",
+                "product_type": "WORLD",
+                "sale_period": {
+                    "start": "2014-01-01T11:11:11",
+                    "end": "2014-02-02T22:22:22"
+                },
+                "transferred": true,
+                "inactive": true
+            }
+        }
+        
+## Club Shop Product [/clubs/{id}/{year}/products/{product-id}]
+### Get information on a specific shop product [GET]
++ Response 200 (application/json)
+
+        {
+            "name": "My Favourite Cat",
+            "submitted_by": "Anthony Smith",
+            "product_type": "WORLD",
+            "sale_period": {
+                "start": "2014-01-01T11:11:11",
+                "end": "2014-02-02T22:22:22"
+            },
+            "transferred": true,
+            "inactive": true,
+            "description": "<p>Description.html</p>",
+            "page_order": 0,
+            "max_purchases_per_person": 0,
+            "product_image": null,
+            "skus": {
+                1656: {
+                    "name": "My Favourite Cat",
+                    "account": {"id": 580, "name": "Ticket Income"},
+                    "activity": {"id": 0, "name": "General"},
+                    "unit_gross_price": 1000,
+                    "quantity": 100,
+                    "unlimited_quantity": false,
+                    "vat_rate": [VAT Rate][],
+                    "requires_collection": false
+                }
+            }
+        }
+        
+# Group Club Assets
+
+## Club Asset
+
+        {
+            "id": 14,
+            "description": "Breakfast Special",
+            "qty": 123094,
+            "location": "The fridge",
+            "year_purchase": 2010,
+            "years_remaining": 3,
+            "net_purchase_cost": 120498,
+            "net_replacement_cost": 2382,
+            "notes": "Very tasty"
+        }
+        
+## Club Asset List [/clubs/{id}/{year}/assets]
+### Get information about a club's assets [GET]
++ Response 200 (application/json)
+
+        {
+            "14": [Club Asset][]
+        }
+    
+    
+## Club Asset Information [/clubs/{id}/{year}/assets/{asset-id}]
+### Get information about a club's asset [GET]
++ Response 200 (application/json)
+
+        [Club Asset][]
+
+# Group Club Risk Assessments
+
+## Club Risk
+
+        {
+            "id": 1902,
+            "hazard": "Fire",
+            "persons_at_risk": "Everyone",
+            "risk": 4,
+            "severity": 5,
+            "response": "Panic",
+            "mitigation": {
+                "current": "Mr. Sands codeword",
+                "future":
+                {
+                    "action": "FLAMEBAR EVERYTHING"
+                    "person": "Bruce Almighty",
+                    "deadline": "2014-01-02"
+                }
+            }
+        }
+
+## Club Risk List [/clubs/{id}/{year}/risks]
+### Get information about a club's acknowledged risks [GET]
++ Response 200 (application/json)
+
+        {
+            "102": [Club Risk][]
+        }
+        
+## Club Risk [/clubs/{id}/{year}/risks/{risk-id}]
+### Get information about a club's risk [GET]
++ Response 200 (application/json)
+
+        [Club Risk][]
+        
+# Group Club Key Lists
+
+## Club Keys [/clubs/{id}/{year}/keys]
+### Get information about a club's keys [GET]
++ Response 200 (application/json)
+
+        [49]
+        
+## Club Key Lists [/clubs/{id}/{year}/keys/{key-id}]
+### Get information about a club's key list [GET]
++ Response 200 (application/json)
+
+        {
+            "active": [00123456, 00123457],
+            "inactive": []
+        }
