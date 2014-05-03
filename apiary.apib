@@ -100,6 +100,23 @@ This request renews an extant session.
 ### Destroy your session [DELETE]
 + Response 204
 
+# Group Roles
+
+eHacktivities will usually automatically attempt to determine the correct role.
+It will return the role ID it is using in the header `X-EHacktivities-Role`.
+If you want to override its choice of role, send a role ID in the header `X-EHacktivities-Role`.
+
+## Role collection [/roles]
+### Get roles available for current user [GET]
++ Response 200 (application/json)
+
+        [
+            {
+                "type": "Club/Society/Project Volunteer",
+                "club": "Student Development"
+            }
+        ]
+
 # Group Clubs
 Resource for representing CSPs.
 
