@@ -438,3 +438,10 @@ class ClubPurchaseOrders(ClubFinancialDocumentation):
         ]
 
         return data
+
+    def item_pdf(self, item_id):
+        # prime the session
+        self.eactivities.load_and_start('/finance/documents')
+
+        # and get the PO PDF!
+        return self.eactivities.streaming_get('/finance/documents/orders/pdf/%d' % (item_id,))

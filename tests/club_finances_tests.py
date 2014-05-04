@@ -27,7 +27,7 @@ class TestClubFinances(unittest.TestCase):
         with self.assertRaises(AttributeError):
             self.club_finances.lol
         self.assertEquals(
-            self.club_finances.funding_overview, 
+            self.club_finances.funding_overview,
             {
                 u'Harlington (2)': 0, u'Grant (0)': 0, u'SGI (1)': 117925
             }
@@ -37,7 +37,7 @@ class TestClubFinances(unittest.TestCase):
 
     def test_getattr_last_year(self):
         self.assertFalse(self.club_finances.loaded_data)
-        
+
         def change_it(soup, tab_id):
             tab_soup = BeautifulSoup(xml.finance_transactions_211_2010)
             encid = tab_soup.data.encid.get_text()
@@ -45,7 +45,7 @@ class TestClubFinances(unittest.TestCase):
             soup_enc.clear()
             soup_enc.append(tab_soup.data)
             soup_enc.data.unwrap()
-        
+
         self.club_finances.year = 2010
         self.eactivities.load_and_start.return_value = BeautifulSoup(
             xml.finance_transactions_211
@@ -54,7 +54,7 @@ class TestClubFinances(unittest.TestCase):
         with self.assertRaises(AttributeError):
             self.club_finances.lol
         self.assertEquals(
-            self.club_finances.funding_overview, 
+            self.club_finances.funding_overview,
             {
                 u'SGI (1)': -183972
             }

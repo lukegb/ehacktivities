@@ -86,6 +86,9 @@ class EActivities(object):
             stream=True
         )
 
+    def streaming_get(self, url):
+        return self.session.get(BASE_PATH + url, stream=True)
+
     def activate_tab(self, soup, tab_id):
         tab_soup, _ = self.ajax_handler({
             'ajax': 'activatetabs',
