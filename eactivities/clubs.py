@@ -1,4 +1,4 @@
-from . import exceptions, club_finances
+from . import exceptions, club_finances, utils
 
 
 class Club(object):
@@ -30,7 +30,7 @@ class Club(object):
                 'No ( found in club - has format changed?'
             )
 
-        name, club_id = self.eactivities.split_role(title)
+        name, club_id = utils.split_role(title)
         assert club_id == unicode(self.id)
 
         return name
@@ -107,7 +107,7 @@ class Club(object):
             _, _, membership_costs = membership_soup.find(
                 "infofield", id="354-1"
             ).get_text().partition(' costs ')
-            membership['membership_cost'] = self.eactivities.format_price(
+            membership['membership_cost'] = utils.format_price(
                 membership_costs
             )
 
@@ -141,7 +141,7 @@ class Club(object):
             _, _, membership_costs = membership_soup.find(
                 "infofield", alias="YearDetails"
             ).get_text().partition(' costs ')
-            membership['membership_cost'] = self.eactivities.format_price(
+            membership['membership_cost'] = utils.format_price(
                 membership_costs
             )
 

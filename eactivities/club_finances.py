@@ -1,6 +1,6 @@
 import datetime
 
-from . import exceptions
+from . import exceptions, utils
 
 
 class ClubFinances(object):
@@ -84,7 +84,7 @@ class ClubFinancialDocumentation(object):
             raise exceptions.EActivitiesHasChanged("Can't find year enclosure")
 
         # choose the correct year
-        y = self.eactivities.format_year(self.club_finances.year)
+        y = utils.format_year(self.club_finances.year)
         year_tab = year_enc.find("tabenclosure", label=y)
         if not year_tab:
             raise self.DoesNotExist("Couldn't find year {}".format(y))
@@ -187,7 +187,7 @@ class ClubBankingRecords(ClubFinancialDocumentation):
                     "infotablecell", alias="Paying in Slip No"
                 ).get_text(),
             'gross_amount':
-                self.eactivities.format_price(
+                utils.format_price(
                     row_soup.find(
                         "infotablecell", fieldtype="money"
                     ).get_text()
@@ -197,7 +197,7 @@ class ClubBankingRecords(ClubFinancialDocumentation):
     def parse_item(self, item_soup):
         data = {}
 
-        _, data['id'] = self.eactivities.split_role(
+        _, data['id'] = utils.split_role(
             item_soup.xmlcurrenttitle.get_text()
         )
         data['id'] = int(data['id'])
@@ -214,25 +214,25 @@ class ClubBankingRecords(ClubFinancialDocumentation):
                 "infotablecell", alias="Description"
             ).get_text()
             tx_line['value'] = {}
-            tx_line['value']['gross'] = self.eactivities.format_price(
+            tx_line['value']['gross'] = utils.format_price(
                 tx_line_soup.find(
                     "infotablecell", fieldtype="money"
                 ).get_text()
             )
-            tx_line['value']['vat'] = self.eactivities.format_vat(
+            tx_line['value']['vat'] = utils.format_vat(
                 tx_line_soup.find("infotablecell", alias="VAT Rate").get_text()
             )
-            tx_line['value'] = self.eactivities.munge_value(tx_line['value'])
-            tx_line['account'] = self.eactivities.split_account_bracket(
+            tx_line['value'] = utils.munge_value(tx_line['value'])
+            tx_line['account'] = utils.split_account_bracket(
                 tx_line_soup.find("infotablecell", alias="Account").get_text()
             )
-            tx_line['activity'] = self.eactivities.split_account_bracket(
+            tx_line['activity'] = utils.split_account_bracket(
                 tx_line_soup.find("infotablecell", alias="Activity").get_text()
             )
-            tx_line['funding_source'] = self.eactivities.split_account_bracket(
+            tx_line['funding_source'] = utils.split_account_bracket(
                 tx_line_soup.find("infotablecell", alias="Funding").get_text()
             )
-            tx_line['consolidation'] = self.eactivities.split_account_bracket(
+            tx_line['consolidation'] = utils.split_account_bracket(
                 tx_line_soup.find(
                     "infotablecell", alias="Consolidation"
                 ).get_text()

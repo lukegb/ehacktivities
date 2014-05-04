@@ -1,11 +1,10 @@
-import decimal
 import random
 import os
 
 import requests
 from bs4 import BeautifulSoup
 
-from . import exceptions, clubs
+from . import exceptions, clubs, utils
 
 SESSION_COOKIE_NAME = 'ICU_eActivities'
 BASE_PATH = 'https://eactivities.union.ic.ac.uk'
@@ -148,41 +147,13 @@ class EActivities(object):
             'navigate': self.current_page_id
         })
 
-    def split_role(self, text):
-        pos = len(text)
-        cnt = 0
-        for c in text[::-1]:
-            pos -= 1
-            if c == ')':
-                cnt += 1
-            elif c == '(':
-                cnt -= 1
-            if cnt == 0:
-                return text[:pos-1], text[pos+1:-1]
-            elif cnt < 0:
-                raise ValueError("BRACKETS MISMATCH")
-        raise ValueError("Couldn't find brackets enclosed value?!?")
-
-    def format_price(self, text_price):
-        price = ''.join([
-            x for x in unicode(text_price) if x in '0123456789.-'
-        ])
-        dprice = decimal.Decimal(price)
-        dprice *= 100
-        return self.quantize_decimal(dprice)
-
-    def quantize_decimal(self, dprice):
-        return int(dprice.quantize(
-            decimal.Decimal('1.'), rounding=decimal.ROUND_HALF_UP
-        ))
-
     def load_roles(self):
         roles = {}
         self.load_and_start('/')
 
         # get the sidebar
         sidebar_soup, _ = self.get_inline_info()
-        position, committee = self.split_role(
+        position, committee = utils.split_role(
             sidebar_soup.find(class_="currentrole").get_text()
         )
         current_role = {
@@ -197,7 +168,7 @@ class EActivities(object):
             role_id = role_option.span.attrs['onclick']
             role_id = int(role_id[role_id.find("'")+1:role_id.rfind("'")])
             role_name = role_option.span.get_text()
-            position, committee = self.split_role(role_name)
+            position, committee = utils.split_role(role_name)
             roles[role_id] = {
                 'id': role_id,
                 'position': position,
@@ -210,7 +181,7 @@ class EActivities(object):
             role_id = role_menuopt.method.get_text()
             role_id = int(role_id[role_id.find("'")+1:role_id.rfind("'")])
             role_name = role_menuopt.label.get_text()
-            position, committee = self.split_role(role_name)
+            position, committee = utils.split_role(role_name)
             roles[role_id] = {
                 'id': role_id,
                 'position': position,
@@ -246,42 +217,3 @@ class EActivities(object):
 
     def club(self, club_id):
         return clubs.Club(self, club_id)
-
-    def format_year(self, year):
-        start_year = str(year % 100)[-2:]
-        end_year = str((int(start_year) + 1) % 100)[-2:]
-        return "{}-{}".format(start_year, end_year)
-
-    def split_account_bracket(self, bracketed_text):
-        thing_name, thing_id = self.split_role(bracketed_text)
-        return {'id': thing_id, 'name': thing_name}
-
-    def format_vat(self, vat_str):
-        vat_type, vat_rate = self.split_role(vat_str)
-        vat_type = vat_type[:vat_type.find(' ')]
-
-        vat_rate = ''.join([
-            x for x in unicode(vat_rate) if x in '0123456789.-'
-        ])
-        dvat_rate = decimal.Decimal(vat_rate)
-        dvat_rate /= 100
-        dvat_rate += 1
-
-        return {'rate': vat_type, 'value': dvat_rate}
-
-    def munge_value(self, value):
-        if 'vat' not in value:
-            return value
-
-        if 'gross' in value and 'net' in value:
-            return value
-        elif 'gross' in value:
-            dgross = decimal.Decimal(value['gross'])
-            dnet = dgross / value['vat']['value']
-            value['net'] = self.quantize_decimal(dnet)
-        elif 'net' in value:
-            dnet = decimal.Decimal(value['net'])
-            dgross = dnet * value['vat']['value']
-            value['gross'] = self.quantize_decimal(dgross)
-
-        return value
