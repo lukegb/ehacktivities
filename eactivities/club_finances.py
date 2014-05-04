@@ -86,6 +86,8 @@ class ClubFinancialDocumentation(object):
     document_type = None
     document_name = None
 
+    item_needs_row = False
+
     def __init__(self, club_finances):
         self.club_finances = club_finances
 
@@ -186,9 +188,16 @@ class ClubFinancialDocumentation(object):
             document_soup, detail_tab.attrs['id'], item_id, tab=True
         )
 
-        return self.parse_item(
-            list_enclosure.find("enclosure", label="Details")
-        )
+        if not self.item_needs_row:
+            return self.parse_item(
+                list_enclosure.find("enclosure", label="Details")
+            )
+        else:
+            row_item = list_enclosure.find("infotablecell", text=item_id).find_parent("infotablerow")
+            return self.parse_item(
+                list_enclosure.find("enclosure", label="Details"),
+                row_item
+            )
 
     def image(self, item_id, image_id):
         self.item(item_id)
@@ -437,6 +446,8 @@ class ClubPurchaseOrders(ClubFinancialDocumentation):
     document_type = 'Expenditure'
     document_name = 'Purchase Orders'
 
+    item_needs_row = True
+
     def parse_list_row(self, row_soup):
         return {
             'id': self.parse_field(row_soup, "Order Number", cell=True),
@@ -449,7 +460,7 @@ class ClubPurchaseOrders(ClubFinancialDocumentation):
             'pro_forma': self.parse_field(row_soup, "Pro Forma", 'bit', cell=True),
         }
 
-    def parse_item(self, item_soup):
+    def parse_item(self, item_soup, row_soup):
         data = {}
 
         _, data['id'] = utils.split_role(
@@ -461,15 +472,18 @@ class ClubPurchaseOrders(ClubFinancialDocumentation):
             'name': self.parse_field(item_soup, "Supplier"),
             'address': self.parse_field(item_soup, "Address")
         }
-        data['status'] = self.parse_field(item_soup, "Order Status", 'status'),
+        data['status'] = self.parse_field(item_soup, "Order Status", 'status')
         data['audit_trail'] = self.parse_audit_trail(item_soup)
         data['next_authorisers'] = self.parse_next_authorisers(item_soup)
         data['transaction_lines'] = []
 
-        data['invoice_received'] = self.parse_field(item_soup, "Invoice Received", 'bit'),
-        data['finished_goods_receipting'] = self.parse_field(item_soup, "Finished Goods Receipting", 'bit'),
+        data['invoice_received'] = self.parse_field(item_soup, "Invoice Received", 'bit')
+        data['finished_goods_receipting'] = self.parse_field(item_soup, "Finished Goods Receipting", 'bit')
 
-        # TODO: pro forma?
+        # pro formas are also only obvious from the list (I think)
+        # there's probably some way you can tell from the details page
+        # but I don't have any pro formas to test with
+        data['pro_forma'] = self.parse_field(row_soup, "Pro Forma", 'bit', cell=True)
 
         for tx_line_soup in item_soup.find("infotablehead", text=u'Account').find_parent("infotable").find_all("infotablerow"):
             tx_line = {}
