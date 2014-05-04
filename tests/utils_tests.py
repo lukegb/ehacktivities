@@ -32,27 +32,27 @@ class TestMungeValue(unittest.TestCase):
     def test_no_vat(self):
         self.assertEqual(
             utils.munge_value({
-                'gross': 500
+                'gross': decimal.Decimal(500)
             }),
             {
-                'gross': 500
+                'gross': decimal.Decimal(500)
             }
         )
         self.assertEqual(
             utils.munge_value({
-                'net': 500
+                'net': decimal.Decimal(500)
             }),
             {
-                'net': 500
+                'net': decimal.Decimal(500)
             }
         )
         self.assertEqual(
             utils.munge_value({
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'gross': 560
             }),
             {
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'gross': 560
             }
         )
@@ -60,7 +60,7 @@ class TestMungeValue(unittest.TestCase):
     def test_vat_net_gross(self):
         self.assertEqual(
             utils.munge_value({
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'gross': 560,
                 'vat': {
                     'rate': 'P1',
@@ -68,7 +68,7 @@ class TestMungeValue(unittest.TestCase):
                 }
             }),
             {
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'gross': 560,
                 'vat': {
                     'rate': 'P1',
@@ -98,14 +98,14 @@ class TestMungeValue(unittest.TestCase):
     def test_vat_net(self):
         self.assertEqual(
             utils.munge_value({
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'vat': {
                     'rate': 'P1',
                     'value': decimal.Decimal(1.2)
                 }
             }),
             {
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'gross': 600,
                 'vat': {
                     'rate': 'P1',
@@ -115,14 +115,14 @@ class TestMungeValue(unittest.TestCase):
         )
         self.assertEqual(
             utils.munge_value({
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'vat': {
                     'rate': 'P1',
                     'value': decimal.Decimal(1.175)
                 }
             }),
             {
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'gross': 588,
                 'vat': {
                     'rate': 'P1',
@@ -141,7 +141,7 @@ class TestMungeValue(unittest.TestCase):
                 }
             }),
             {
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'gross': 600,
                 'vat': {
                     'rate': 'P1',
@@ -158,7 +158,7 @@ class TestMungeValue(unittest.TestCase):
                 }
             }),
             {
-                'net': 500,
+                'net': decimal.Decimal(500),
                 'gross': 588,
                 'vat': {
                     'rate': 'P1',
@@ -177,14 +177,14 @@ class TestSplitRole(unittest.TestCase):
 
 class TestFormatPrice(unittest.TestCase):
     def test_simple(self):
-        self.assertEqual(utils.format_price('132.58'), 13258)
-        self.assertEqual(utils.format_price('67'), 6700)
-        self.assertEqual(utils.format_price('-79'), -7900)
+        self.assertEqual(utils.format_price('132.58'), decimal.Decimal('132.58'))
+        self.assertEqual(utils.format_price('67'), decimal.Decimal('67.00'))
+        self.assertEqual(utils.format_price('-79'), decimal.Decimal('-79.00'))
 
     def test_extraneous_characters(self):
-        self.assertEqual(utils.format_price(u'£24.33'), 2433)
-        self.assertEqual(utils.format_price(u'£24.93p'), 2493)
-        self.assertEqual(utils.format_price(u'-£14.33p'), -1433)
+        self.assertEqual(utils.format_price(u'£24.33'), decimal.Decimal('24.33'))
+        self.assertEqual(utils.format_price(u'£24.93p'), decimal.Decimal('24.93'))
+        self.assertEqual(utils.format_price(u'-£14.33p'), decimal.Decimal('-14.33'))
 
 
 class TestQuantizeDecimal(unittest.TestCase):

@@ -67,9 +67,7 @@ def format_price(text_price):
     price = u''.join([
         x for x in unicode(text_price) if x in u'0123456789.-'
     ])
-    dprice = decimal.Decimal(price)
-    dprice *= 100
-    return quantize_decimal(dprice)
+    return decimal.Decimal(price)
 
 
 def quantize_decimal(dprice):

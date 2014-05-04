@@ -1,4 +1,6 @@
 import unittest
+import decimal
+
 from mock import MagicMock
 from bs4 import BeautifulSoup
 
@@ -29,7 +31,9 @@ class TestClubFinances(unittest.TestCase):
         self.assertEquals(
             self.club_finances.funding_overview,
             {
-                u'Harlington (2)': 0, u'Grant (0)': 0, u'SGI (1)': 117925
+                u'Harlington (2)': decimal.Decimal('0'),
+                u'Grant (0)': decimal.Decimal('0'),
+                u'SGI (1)': decimal.Decimal('1179.25')
             }
         )
 
@@ -56,7 +60,7 @@ class TestClubFinances(unittest.TestCase):
         self.assertEquals(
             self.club_finances.funding_overview,
             {
-                u'SGI (1)': -183972
+                u'SGI (1)': decimal.Decimal('-1839.72')
             }
         )
 

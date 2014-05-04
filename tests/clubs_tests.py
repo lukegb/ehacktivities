@@ -1,4 +1,5 @@
 import unittest
+import decimal
 from mock import MagicMock
 from bs4 import BeautifulSoup
 
@@ -52,7 +53,7 @@ class TestClub(unittest.TestCase):
         ])
         self.assertEquals(self.club.members['full_members'], 342)
         self.assertEquals(self.club.members['full_members_quota'], 120)
-        self.assertEquals(self.club.members['membership_cost'], 500)
+        self.assertEquals(self.club.members['membership_cost'], decimal.Decimal('5.00'))
         self.assertEquals(self.club.members['associate_members'], 11)
 
     def test_getattr_noaccess(self):
@@ -70,5 +71,5 @@ class TestClub(unittest.TestCase):
 
         self.assertEquals(self.club.members['full_members'], 342)
         self.assertEquals(self.club.members['full_members_quota'], 120)
-        self.assertEquals(self.club.members['membership_cost'], 500)
+        self.assertEquals(self.club.members['membership_cost'], decimal.Decimal('5.00'))
         self.assertEquals(self.club.members['associate_members'], 11)
