@@ -1,6 +1,7 @@
 # vim: set fileencoding=utf-8
 
 import decimal
+import datetime
 
 
 def format_year(year):
@@ -75,3 +76,10 @@ def quantize_decimal(dprice):
     return int(dprice.quantize(
         decimal.Decimal('1.'), rounding=decimal.ROUND_HALF_UP
     ))
+
+
+def parse_date(date):
+    try:
+        return datetime.datetime.strptime(date, "%d/%m/%Y").date()
+    except UnicodeEncodeError:
+        return None

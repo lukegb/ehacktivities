@@ -93,6 +93,10 @@ class EActivities(object):
         })
         encid = tab_soup.data.encid.get_text()
         soup_enc = soup.find("enclosure", id=encid)
+        for old_el in soup_enc.find_previous_siblings("enclosure", active="true"):
+            old_el.attrs['active'] = 'false'
+        for old_el in soup_enc.find_next_siblings("enclosure", active="true"):
+            old_el.attrs['active'] = 'false'
         soup_enc.clear()
         soup_enc.append(tab_soup.data)
         soup_enc.data.unwrap()
@@ -106,11 +110,7 @@ class EActivities(object):
             'tab': tab
         })
 
-        if dssoup.metadata.errorcode.get_text() == '-2' and \
-                dssoup.metadata.returnvalue.get_text() == '0':
-            return self.activate_tab(soup, tab_id)
-
-        return soup
+        return self.activate_tab(soup, tab_id)
 
     def authenticate(self, credentials):
         soup, resp = self.ajax_handler({

@@ -433,6 +433,182 @@ finance_transactions_211 = u"""
 </xmlDoc>
 """
 
+finance_transactions_211_2010 = u"""
+<xmlDoc>
+    <metadata>
+        <errorcode>0</errorcode>
+        <returnvalue>0</returnvalue>
+    </metadata>
+    <data>
+        <encid>654</encid>
+        <tabenclosure id="654-0" required="" label="13-14" showtabs="1" active="false" />
+        <tabenclosure id="654-1" required="" label="12-13" showtabs="1" active="false" />
+        <tabenclosure id="654-2" required="" label="11-12" showtabs="1" active="false" />
+        <tabenclosure id="654-3" required="" label="10-11" showtabs="1" active="true">
+            <encid>654-3</encid>
+            <enclosure id="655" required="" label="Overview" showtabs="" swipe="" active="true">
+                <encid>655</encid>
+                <div class="formenc">
+                    <infoenclosure layout="ul">
+                        <infofield id="667-0" fieldtype="nvarchar" alias="MemDetails">Number of Full Members: 315 of 20 (1575%)</infofield>
+                        <infofield id="667-1" fieldtype="nvarchar" alias="MemNum">Number of Life/Associate members: 2</infofield>
+                        <infofield id="667-2" fieldtype="nvarchar" alias="YearDetails">Membership costs £3.00</infofield>
+                    </infoenclosure>
+                    <label removereadonly="">FULL MEMBERSHIP PERCENTAGE</label>
+                    <infobars>
+                        <infobar>1575</infobar>
+                    </infobars>
+                    <infoenclosure>
+                        <infofield id="4014-0" fieldtype="int" alias="Download Transactions" linkobj="finance/transactions/overview/csv" imglink="excelicon.gif" linktitle="Download Transaction Report">172</infofield>
+                    </infoenclosure>
+                    <label removereadonly="">FUNDING OVERVIEW</label>
+                    <infotable tablekey="0" tableid="658">
+                        <infotableheadrow>
+                            <infotablehead>Funding (Code)</infotablehead>
+                            <infotablehead>Total Amount (£)</infotablehead>
+                        </infotableheadrow>
+                        <infotablerow>
+                            <infotablecell fieldtype="nvarchar" alias="Funding (Code)" event="changeTab(eObj.controlObj, 52, '1');">SGI (1)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Total Amount (£)">-1839.72</infotablecell>
+                        </infotablerow>
+                        <infotablefootrow>
+                            <infotablefoot>&#x00a0;</infotablefoot>
+                            <infotablefoot fieldcon="1">-1,839.72</infotablefoot>
+                        </infotablefootrow>
+                    </infotable>
+                    <infotable tablekey="SGI (1)" tableid="660" title="SGI (1)" event="changeTab(eObj.controlObj, 52, '1');">
+                        <infotableheadrow>
+                            <infotablehead>Account (Code)</infotablehead>
+                            <infotablehead>General (00)</infotablehead>
+                            <infotablehead>Xmas All-Nighter (52)</infotablehead>
+                            <infotablehead>Easter All-Nighter (53)</infotablehead>
+                        </infotableheadrow>
+                        <infotablerow>
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Consumables (640)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-75.52</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">-22.97</infotablecell>
+                        </infotablerow>
+                        <infotablerow rowclass="even">
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Copyright &amp; Royalties (725)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-701.43</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">&#x00a0;</infotablecell>
+                        </infotablerow>
+                        <infotablerow>
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Disposables (665)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">-25.2</infotablecell>
+                        </infotablerow>
+                        <infotablerow rowclass="even">
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Equipment Hire (690)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-116.63</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">-209.93</infotablecell>
+                        </infotablerow>
+                        <infotablerow>
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Equipment Purchase (685)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-10.94</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">&#x00a0;</infotablecell>
+                        </infotablerow>
+                        <infotablerow rowclass="even">
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Goods &amp; Services (450)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">0</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">&#x00a0;</infotablecell>
+                        </infotablerow>
+                        <infotablerow>
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Goods for Resale (705)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-1239.7</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">-610.76</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">-788.35</infotablecell>
+                        </infotablerow>
+                        <infotablerow rowclass="even">
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Members Funds (225)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-4661.53</infotablecell>
+                            <infotablecell fieldcon="" fieldtype="float" alias="Xmas All-Nighter (52)">334.91</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">&#x00a0;</infotablecell>
+                        </infotablerow>
+                        <infotablerow>
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Printing Costs (820)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-10.77</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">&#x00a0;</infotablecell>
+                        </infotablerow>
+                        <infotablerow rowclass="even">
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Publicity (825)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-29.05</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">&#x00a0;</infotablecell>
+                        </infotablerow>
+                        <infotablerow>
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Rental Income (510)</infotablecell>
+                            <infotablecell fieldcon="" fieldtype="float" alias="General (00)">1699.31</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">&#x00a0;</infotablecell>
+                        </infotablerow>
+                        <infotablerow rowclass="even">
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Sales General (520)</infotablecell>
+                            <infotablecell fieldcon="" fieldtype="float" alias="General (00)">394.88</infotablecell>
+                            <infotablecell fieldcon="" fieldtype="float" alias="Xmas All-Nighter (52)">200.99</infotablecell>
+                            <infotablecell fieldcon="" fieldtype="float" alias="Easter All-Nighter (53)">188.51</infotablecell>
+                        </infotablerow>
+                        <infotablerow>
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Subscriptions (570)</infotablecell>
+                            <infotablecell fieldcon="" fieldtype="float" alias="General (00)">817.25</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">&#x00a0;</infotablecell>
+                        </infotablerow>
+                        <infotablerow rowclass="even">
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Telephones (875)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-98.93</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">&#x00a0;</infotablecell>
+                        </infotablerow>
+                        <infotablerow>
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Ticket Income (580)</infotablecell>
+                            <infotablecell fieldcon="" fieldtype="float" alias="General (00)">1708.6</infotablecell>
+                            <infotablecell fieldcon="" fieldtype="float" alias="Xmas All-Nighter (52)">864.66</infotablecell>
+                            <infotablecell fieldcon="" fieldtype="float" alias="Easter All-Nighter (53)">1214.92</infotablecell>
+                        </infotablerow>
+                        <infotablerow rowclass="even">
+                            <infotablecell fieldcon="" fieldtype="nvarchar" alias="Account (Code)">Travel Expenditure (895)</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="General (00)">-646.04</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Xmas All-Nighter (52)">&#x00a0;</infotablecell>
+                            <infotablecell fieldcon="1" fieldtype="float" alias="Easter All-Nighter (53)">-16</infotablecell>
+                        </infotablerow>
+                        <infotablefootrow>
+                            <infotablefoot>&#x00a0;</infotablefoot>
+                            <infotablefoot fieldcon="1">-2,970.50</infotablefoot>
+                            <infotablefoot fieldcon="">789.80</infotablefoot>
+                            <infotablefoot fieldcon="">340.98</infotablefoot>
+                        </infotablefootrow>
+                    </infotable>
+                </div>
+            </enclosure>
+            <enclosure id="52" required="" label="Transaction Lines" showtabs="" swipe="" active="false" />
+            <enclosure id="656" required="" label="Budget for 11-12" showtabs="" swipe="" active="false" />
+            <enclosure id="659" required="" label="Outstanding Invoices" showtabs="" swipe="" active="false" />
+            <enclosure id="5065" required="" label="Trend Graphs" showtabs="" swipe="" active="false" />
+        </tabenclosure>
+        <tabenclosure id="654-4" required="" label="09-10" showtabs="1" active="false" />
+        <tabenclosure id="654-5" required="" label="08-09" showtabs="1" active="false" />
+        <tabenclosure id="654-6" required="" label="07-08" showtabs="1" active="false" />
+        <tabenclosure id="654-7" required="" label="06-07" showtabs="1" active="false" />
+        <tabenclosure id="654-8" required="" label="05-06" showtabs="1" active="false" />
+        <tabenclosure id="654-9" required="" label="04-05" showtabs="1" active="false" />
+        <tabenclosure id="654-10" required="" label="03-04" showtabs="1" active="false" />
+        <tabenclosure id="654-11" required="" label="02-03" showtabs="1" active="false" />
+        <tabenclosure id="654-12" required="" label="01-02" showtabs="1" active="false" />
+        <tabenclosure id="654-13" required="" label="00-01" showtabs="1" active="false" />
+        <tabenclosure id="654-14" required="" label="99-00" showtabs="1" active="false" />
+        <tabenclosure id="654-15" required="" label="98-99" showtabs="1" active="false" />
+    </data>
+</xmlDoc>
+"""
+
 admin_csp_details_211 = u"""
 <xmlDoc>
     <metadata>

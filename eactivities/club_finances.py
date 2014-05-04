@@ -1,6 +1,12 @@
-import datetime
+# vim: set fileencoding=utf-8
+
+import re
 
 from . import exceptions, utils
+
+AMOUNT_RE = re.compile(r"Amount \(")
+PRICE_RE = re.compile(r"Price .*\(")
+TOTAL_RE = re.compile(r"Total .*\(")
 
 
 class ClubFinances(object):
@@ -25,7 +31,7 @@ class ClubFinances(object):
         )
 
         # pick the correct year
-        y = self.club.eactivities.format_year(self.year)
+        y = utils.format_year(self.year)
         tab_enc = finance_soup.find(
             "enclosure", label="Transaction Pages Years"
         )
@@ -33,7 +39,7 @@ class ClubFinances(object):
         if not year_tab:
             raise ClubFinances.DoesNotExist("Year does not exist")
         if year_tab.attrs['active'] != 'true':
-            finance_soup, _ = self.club.eactivities.activate_tab(
+            self.club.eactivities.activate_tab(
                 finance_soup, year_tab.attrs['id']
             )
 
@@ -43,7 +49,7 @@ class ClubFinances(object):
             funding_row_source = unicode(funding_row_soup.find(
                 "infotablecell", fieldtype="nvarchar"
             ).get_text())
-            funding_row_value = self.club.eactivities.format_price(
+            funding_row_value = utils.format_price(
                 funding_row_soup.find(
                     "infotablecell", fieldtype="float"
                 ).get_text()
@@ -56,6 +62,12 @@ class ClubFinances(object):
 
     def banking_records(self):
         return ClubBankingRecords(self)
+
+    def claims(self):
+        return ClubClaims(self)
+
+    def purchase_orders(self):
+        return ClubPurchaseOrders(self)
 
     class DoesNotExist(exceptions.DoesNotExist):
         pass
@@ -104,23 +116,27 @@ class ClubFinancialDocumentation(object):
             )
         if dtype_tab.attrs['active'] != 'true':
             self.eactivities.activate_tab(document_soup, dtype_tab.attrs['id'])
+        dtype_tab = dtype_enc.find("enclosure", label=self.document_type)
 
         # choose the correct document
-        dname_enc = dtype_enc.find("enclosure", active="true")
+        dname_enc = dtype_tab
         if not dname_enc:
             raise exceptions.EActivitiesHasChanged(
                 "Can't find document enclosure"
             )
         dname_tab = dname_enc.find("enclosure", label=self.document_name)
         if not dname_tab:
+            with open('blah.xml', 'wb') as f:
+                f.write(unicode(document_soup).encode('utf-8'))
             raise self.DoesNotExist(
                 "Couldn't find document '{}'".format(self.document_name)
             )
         if dname_tab.attrs['active'] != 'true':
             self.eactivities.activate_tab(document_soup, dname_tab.attrs['id'])
+        dname_tab = dname_enc.find("enclosure", label=self.document_name)
 
         # make sure we're in list mode?
-        mode_enc = dname_enc.find("enclosure", active="true")
+        mode_enc = dname_tab
         if not mode_enc:
             raise exceptions.EActivitiesHasChanged(
                 "Can't find list/detail enclosure"
@@ -132,9 +148,10 @@ class ClubFinancialDocumentation(object):
             )
         if mode_tab.attrs['active'] != 'true':
             self.eactivities.activate_tab(document_soup, mode_tab.attrs['id'])
+        mode_tab = mode_enc.find("enclosure", label="List")
 
         # now return the soup representing the form enclosure
-        return mode_enc.find("enclosure", active="true"), document_soup
+        return mode_tab, document_soup
 
     def list(self):
         # here we go
@@ -149,7 +166,7 @@ class ClubFinancialDocumentation(object):
     def item(self, item_id):
         # yay
         list_soup, document_soup = self.optimus_prime()
-        list_enclosure = list_soup.find_parent("enclosure", active="true")
+        list_enclosure = list_soup.parent
         detail_tab = list_enclosure.find("enclosure", label="Details")
         if not detail_tab:
             raise exceptions.EActivitiesHasChanged(
@@ -172,6 +189,73 @@ class ClubFinancialDocumentation(object):
         self.item(item_id)
         return self.eactivities.file_handler(image_id, override=True)
 
+    def parse_audit_trail(self, item_soup):
+        audit_trail_label_soup = item_soup.find("label", text='AUDIT TRAIL')
+        audit_table_soup = audit_trail_label_soup.find_next_sibling('infotable')
+        audit_trail = []
+
+        for audit_row_soup in audit_table_soup.find_all("infotablerow"):
+            audit_entry = {}
+            audit_entry['role'] = unicode(audit_row_soup.find(
+                "infotablecell", alias="Role"
+            ).get_text())
+            audit_entry['notes'] = unicode(audit_row_soup.find(
+                "infotablecell", alias="Notes"
+            ).get_text())
+            audit_entry['date'] = utils.parse_date(
+                audit_row_soup.find(
+                    "infotablecell", alias="Date"
+                ).get_text()
+            )
+
+            person_with_role = audit_entry['notes']
+            person_with_role = person_with_role[:person_with_role.find(')) ')+2]
+            person, _ = utils.split_role(person_with_role)
+            audit_entry['name'] = person
+
+            audit_trail.append(audit_entry)
+
+        return audit_trail
+
+    def parse_next_authorisers(self, item_soup):
+        authorisers_label_soup = item_soup.find("label", text='NEXT AUTHORISERS')
+        if not authorisers_label_soup:
+            return None
+
+        authorisers_enc_soup = authorisers_label_soup.find_next_sibling('infoenclosure')
+        authorisers = []
+
+        for authoriser_row_soup in authorisers_enc_soup.find_all("infofield"):
+            authoriser = {}
+            authoriser['name'], authoriser['role'] = utils.split_role(
+                authoriser_row_soup.get_text()
+            )
+            authorisers.append(authoriser)
+
+        return authorisers
+
+    def parse_field(self, soup, alias, type='text', cell=False):
+        dt = {
+            'text': unicode,
+            'date': utils.parse_date,
+            'money': utils.format_price,
+            'number': float,
+            'bit': lambda x: x.strip() == '1',
+            'vat': utils.format_vat,
+            'account': utils.split_account_bracket,
+            'status': lambda x: x.replace(' ', '_').upper()
+        }
+
+        x = soup.find(
+            "infofield" if not cell else "infotablecell",
+            alias=alias
+        )
+
+        if not x:
+            return None
+
+        return dt[type](x.get_text())
+
     class DoesNotExist(exceptions.DoesNotExist):
         pass
 
@@ -182,16 +266,8 @@ class ClubBankingRecords(ClubFinancialDocumentation):
 
     def parse_list_row(self, row_soup):
         return {
-            'id':
-                row_soup.find(
-                    "infotablecell", alias="Paying in Slip No"
-                ).get_text(),
-            'gross_amount':
-                utils.format_price(
-                    row_soup.find(
-                        "infotablecell", fieldtype="money"
-                    ).get_text()
-                )
+            'id': self.parse_field(row_soup, "Paying in Slip No", cell=True),
+            'gross_amount': self.parse_field(row_soup, AMOUNT_RE, 'money', cell=True)
         }
 
     def parse_item(self, item_soup):
@@ -201,42 +277,20 @@ class ClubBankingRecords(ClubFinancialDocumentation):
             item_soup.xmlcurrenttitle.get_text()
         )
         data['id'] = int(data['id'])
-        data['date'] = datetime.datetime.strptime(
-            item_soup.find(
-                "infofield", alias="Date Paid In"
-            ).get_text(), "%d/%m/%Y"
-        ).date()
+        data['date'] = self.parse_field(item_soup, "Date Paid In", 'date')
         data['transaction_lines'] = []
 
         for tx_line_soup in item_soup.infotable.find_all("infotablerow"):
             tx_line = {}
-            tx_line['description'] = tx_line_soup.find(
-                "infotablecell", alias="Description"
-            ).get_text()
+            tx_line['description'] = self.parse_field(tx_line_soup, "Description", cell=True)
             tx_line['value'] = {}
-            tx_line['value']['gross'] = utils.format_price(
-                tx_line_soup.find(
-                    "infotablecell", fieldtype="money"
-                ).get_text()
-            )
-            tx_line['value']['vat'] = utils.format_vat(
-                tx_line_soup.find("infotablecell", alias="VAT Rate").get_text()
-            )
+            tx_line['value']['gross'] = self.parse_field(tx_line_soup, AMOUNT_RE, 'money', cell=True)
+            tx_line['value']['vat'] = self.parse_field(tx_line_soup, "VAT Rate", 'vat', cell=True)
             tx_line['value'] = utils.munge_value(tx_line['value'])
-            tx_line['account'] = utils.split_account_bracket(
-                tx_line_soup.find("infotablecell", alias="Account").get_text()
-            )
-            tx_line['activity'] = utils.split_account_bracket(
-                tx_line_soup.find("infotablecell", alias="Activity").get_text()
-            )
-            tx_line['funding_source'] = utils.split_account_bracket(
-                tx_line_soup.find("infotablecell", alias="Funding").get_text()
-            )
-            tx_line['consolidation'] = utils.split_account_bracket(
-                tx_line_soup.find(
-                    "infotablecell", alias="Consolidation"
-                ).get_text()
-            )
+            tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
+            tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
+            tx_line['funding_source'] = self.parse_field(tx_line_soup, "Funding", 'account', cell=True)
+            tx_line['consolidation'] = self.parse_field(tx_line_soup, "Consolidation", 'account', cell=True)
 
             for k, v in tx_line.iteritems():
                 if isinstance(v, unicode):
@@ -248,6 +302,138 @@ class ClubBankingRecords(ClubFinancialDocumentation):
             x['value']['gross'] for x in data['transaction_lines']
         ])
         data['paying_in_slips'] = [
+            unicode(x.get_text()) for x in item_soup.find_all("picture")
+        ]
+
+        return data
+
+
+class ClubClaims(ClubFinancialDocumentation):
+    document_type = 'Expenditure'
+    document_name = 'Claims'
+
+    def parse_list_row(self, row_soup):
+        return {
+            'id': self.parse_field(row_soup, "Claim Number", cell=True),
+            'person': self.parse_field(row_soup, "Person", cell=True),
+            'status': self.parse_field(row_soup, "Claim Status", 'status', cell=True),
+            'payment_date': self.parse_field(row_soup, "Payment Date", "date", cell=True),
+            'gross_amount': self.parse_field(row_soup, AMOUNT_RE, "money", cell=True)
+        }
+
+    def parse_item(self, item_soup):
+        data = {}
+
+        _, data['id'] = utils.split_role(
+            item_soup.xmlcurrenttitle.get_text()
+        )
+        data['id'] = int(data['id'])
+        data['payment_date'] = self.parse_field(item_soup, "Payment Date", "date")
+        data['person'] = self.parse_field(item_soup, "Person")
+        data['notes'] = self.parse_field(item_soup, "Notes")
+        data['gross_amount'] = self.parse_field(item_soup, AMOUNT_RE, 'money')
+        data['status'] = self.parse_field(item_soup, "Claim Status", 'status')
+        data['audit_trail'] = self.parse_audit_trail(item_soup)
+        data['next_authorisers'] = self.parse_next_authorisers(item_soup)
+        data['transaction_lines'] = []
+
+        for tx_line_soup in item_soup.find("infotablehead", text=u'Account').find_parent("infotable").find_all("infotablerow"):
+            tx_line = {}
+            tx_line['description'] = self.parse_field(tx_line_soup, "Description", cell=True)
+            tx_line['value'] = {}
+            tx_line['value']['gross'] = self.parse_field(tx_line_soup, PRICE_RE, 'money', cell=True)
+            tx_line['value']['vat'] = self.parse_field(tx_line_soup, "VAT Rate", 'vat', cell=True)
+            tx_line['value'] = utils.munge_value(tx_line['value'])
+            tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
+            tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
+            tx_line['funding_source'] = self.parse_field(tx_line_soup, "Funding", 'account', cell=True)
+            tx_line['consolidation'] = self.parse_field(tx_line_soup, "Consolidation", 'account', cell=True)
+
+            for k, v in tx_line.iteritems():
+                if isinstance(v, unicode):
+                    tx_line[k] = unicode(v)
+
+            data['transaction_lines'].append(tx_line)
+
+        data['receipts'] = [
+            unicode(x.get_text()) for x in item_soup.find_all("picture")
+        ]
+
+        return data
+
+
+class ClubPurchaseOrders(ClubFinancialDocumentation):
+    document_type = 'Expenditure'
+    document_name = 'Purchase Orders'
+
+    def parse_list_row(self, row_soup):
+        return {
+            'id': self.parse_field(row_soup, "Order Number", cell=True),
+            'supplier': {'name': self.parse_field(row_soup, "Supplier", cell=True)},
+            'status': self.parse_field(row_soup, "Order Status", 'status', cell=True),
+            'payment_date': self.parse_field(row_soup, "Payment Date", 'date', cell=True),
+            'gross_amount': self.parse_field(row_soup, AMOUNT_RE, 'money', cell=True),
+            'invoice_received': self.parse_field(row_soup, "Invoice Received", 'bit', cell=True),
+            'finished_goods_receipting': self.parse_field(row_soup, "Finished Goods Receipting", 'bit', cell=True),
+            'pro_forma': self.parse_field(row_soup, "Pro Forma", 'bit', cell=True),
+        }
+
+    def parse_item(self, item_soup):
+        data = {}
+
+        _, data['id'] = utils.split_role(
+            item_soup.xmlcurrenttitle.get_text()
+        )
+        data['id'] = int(data['id'])
+        data['payment_date'] = self.parse_field(item_soup, "Payment Date", 'date')
+        data['supplier'] = {
+            'name': self.parse_field(item_soup, "Supplier"),
+            'address': self.parse_field(item_soup, "Address")
+        }
+        data['status'] = self.parse_field(item_soup, "Order Status", 'status'),
+        data['audit_trail'] = self.parse_audit_trail(item_soup)
+        data['next_authorisers'] = self.parse_next_authorisers(item_soup)
+        data['transaction_lines'] = []
+
+        data['invoice_received'] = self.parse_field(item_soup, "Invoice Received", 'bit'),
+        data['finished_goods_receipting'] = self.parse_field(item_soup, "Finished Goods Receipting", 'bit'),
+
+        # TODO: pro forma?
+
+        for tx_line_soup in item_soup.find("infotablehead", text=u'Account').find_parent("infotable").find_all("infotablerow"):
+            tx_line = {}
+            tx_line['description'] = self.parse_field(tx_line_soup, "Description", cell=True)
+
+            tx_line['unit_value'] = {}
+            tx_line['unit_value']['gross'] = self.parse_field(tx_line_soup, PRICE_RE, 'money', cell=True)
+            tx_line['unit_value']['vat'] = self.parse_field(tx_line_soup, "VAT Rate", 'vat', cell=True)
+            tx_line['unit_value'] = utils.munge_value(tx_line['unit_value'])
+
+            tx_line['value'] = {}
+            tx_line['value']['gross'] = self.parse_field(tx_line_soup, TOTAL_RE, 'money', cell=True)
+            tx_line['value']['vat'] = self.parse_field(tx_line_soup, "VAT Rate", 'vat', cell=True)
+            tx_line['value'] = utils.munge_value(tx_line['value'])
+
+            tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
+            tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
+            tx_line['funding_source'] = self.parse_field(tx_line_soup, "Funding", 'account', cell=True)
+            tx_line['consolidation'] = self.parse_field(tx_line_soup, "Consolidation", 'account', cell=True)
+
+            tx_line['quantity'] = {
+                'ordered': self.parse_field(tx_line_soup, "Quantity", 'number', cell=True),
+                'received': self.parse_field(tx_line_soup, "Number Received", 'number', cell=True),
+            }
+
+            for k, v in tx_line.iteritems():
+                if isinstance(v, unicode):
+                    tx_line[k] = unicode(v)
+
+            data['transaction_lines'].append(tx_line)
+
+        data['gross_amount'] = sum([
+            x['value']['gross'] for x in data['transaction_lines']
+        ])
+        data['invoices'] = [
             unicode(x.get_text()) for x in item_soup.find_all("picture")
         ]
 
