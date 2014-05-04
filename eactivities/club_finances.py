@@ -359,7 +359,7 @@ class ClubSalesInvoices(ClubFinancialDocumentation):
             tx_line['value']['gross'] = self.parse_field(tx_line_soup, TOTAL_RE, 'money', cell=True)
             tx_line['value']['vat'] = self.parse_field(tx_line_soup, "VAT Rate", 'vat', cell=True)
             tx_line['value'] = utils.munge_value(tx_line['value'])
-            
+
             tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
             tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
             tx_line['funding_source'] = self.parse_field(tx_line_soup, "Funding", 'account', cell=True)
