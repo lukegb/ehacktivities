@@ -1,23 +1,54 @@
-# Compiled Object files, Static and Dynamic libs (Shared Objects)
-*.o
-*.a
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# C extensions
 *.so
 
-# Folders
-_obj
-_test
+# Distribution / packaging
+.Python
+env/
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Architecture specific extensions/prefixes
-*.[568vq]
-[568vq].out
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
 
-*.cgo1.go
-*.cgo2.c
-_cgo_defun.c
-_cgo_gotypes.go
-_cgo_export.*
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
 
-_testmain.go
+# Translations
+*.mo
 
-*.exe
-*.test
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
+
+# Rope
+.ropeproject
+
+# Django stuff:
+*.log
+*.pot
+
+# Sphinx documentation
+docs/_build/
+
