@@ -72,6 +72,12 @@ class ClubFinances(object):
     def sales_invoices(self):
         return ClubSalesInvoices(self)
 
+    def transaction_corrections(self):
+        return ClubTransactionCorrections(self)
+
+    def internal_charges(self):
+        return ClubInternalCharges(self)
+
     class DoesNotExist(exceptions.DoesNotExist):
         pass
 
@@ -510,3 +516,200 @@ class ClubPurchaseOrders(ClubFinancialDocumentation):
 
         # and get the PO PDF!
         return self.eactivities.streaming_get('/finance/documents/orders/pdf/%d' % (item_id,))
+
+
+class ClubTransactionCorrections(ClubFinancialDocumentation):
+    document_type = 'Transfers'
+    document_name = 'Transaction Corrections'
+
+    def parse_list_row(self, row_soup):
+        return {
+            'id': self.parse_field(row_soup, "Correction Number", cell=True),
+            'status': self.parse_field(row_soup, "Correction Status", 'status', cell=True),
+            'gross_amount': self.parse_field(row_soup, AMOUNT_RE, "money", cell=True)
+        }
+
+    def parse_item(self, item_soup):
+        # we need the "to" transaction lines!
+        from_enclosure = item_soup.find("enclosure", label="From Lines")
+        to_enclosure = item_soup.find("enclosure", label="To Lines")
+        self.eactivities.activate_tab(item_soup, to_enclosure.attrs['id'])
+
+        data = {}
+
+        _, data['id'] = utils.split_role(
+            item_soup.xmlcurrenttitle.get_text()
+        )
+        data['id'] = int(data['id'])
+
+        data['gross_amount'] = self.parse_field(item_soup, AMOUNT_RE, 'money')
+        data['status'] = self.parse_field(item_soup, "Correction Status", 'status')
+
+        data['audit_trail'] = self.parse_audit_trail(item_soup)
+        data['next_authorisers'] = self.parse_next_authorisers(item_soup)
+
+        data['from_transaction_lines'] = []
+        data['to_transaction_lines'] = []
+
+        for tx_line_soup in from_enclosure.find_all("infotablerow"):
+            tx_line = {}
+            tx_line['description'] = self.parse_field(tx_line_soup, "Description", cell=True)
+
+            tx_line['value'] = {}
+            tx_line['value']['gross'] = self.parse_field(tx_line_soup, AMOUNT_RE, 'money', cell=True)
+            tx_line['value'] = utils.munge_value(tx_line['value'])
+
+            tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
+            tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
+            tx_line['funding_source'] = self.parse_field(tx_line_soup, "Funding", 'account', cell=True)
+
+            data['from_transaction_lines'].append(tx_line)
+
+        for tx_line_soup in to_enclosure.find_all("infotablerow"):
+            tx_line = {}
+            tx_line['description'] = self.parse_field(tx_line_soup, "Description", cell=True)
+
+            tx_line['value'] = {}
+            tx_line['value']['gross'] = self.parse_field(tx_line_soup, AMOUNT_RE, 'money', cell=True)
+            tx_line['value'] = utils.munge_value(tx_line['value'])
+
+            tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
+            tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
+            tx_line['funding_source'] = self.parse_field(tx_line_soup, "Funding", 'account', cell=True)
+
+            data['to_transaction_lines'].append(tx_line)
+
+        return data
+
+
+class ClubInternalCharges(ClubFinancialDocumentation):
+    document_type = 'Transfers'
+    document_name = 'Internal Charges'
+
+    def list(self):
+        # here we go
+        list_soup, document_soup = self.optimus_prime()
+
+        charged_enclosure = list_soup.find_parent("enclosure")
+        charging_enclosure = charged_enclosure.find_next_sibling("enclosure")
+
+        # expand the charging enclosure while we're at it
+        self.eactivities.activate_tab(document_soup, charging_enclosure.attrs['id'])
+
+        nice_name = unicode(charged_enclosure.attrs['label'])
+        nice_name = nice_name[:nice_name.find(" Charged")]
+        self.club_ident = {
+            'id': self.club_finances.club.id,
+            'name': nice_name,
+        }
+
+        items = []
+        for row_soup in charged_enclosure.find_all("infotablerow"):
+            items.append(self.parse_list_row(row_soup, False))
+        for row_soup in charging_enclosure.find_all("infotablerow"):
+            items.append(self.parse_list_row(row_soup, True))
+
+        return items
+
+    def item(self, item_id):
+        # yay
+        list_soup, document_soup = self.optimus_prime()
+
+        charged_enclosure = list_soup.find_parent("enclosure")
+        charging_enclosure = charged_enclosure.find_next_sibling("enclosure")
+
+        nice_name = unicode(charged_enclosure.attrs['label'])
+        nice_name = nice_name[:nice_name.find(" Charged")]
+        self.club_ident = {
+            'id': self.club_finances.club.id,
+            'name': nice_name,
+        }
+
+        # let's check to see if we can find the item in "this" list
+        item_entry = charged_enclosure.find(alias="Charge Number", text=unicode(item_id))
+        if item_entry is None:
+            # expand the charging enclosure
+            self.eactivities.activate_tab(document_soup, charging_enclosure.attrs['id'])
+            item_entry = charging_enclosure.find(alias="Charge Number", text=unicode(item_id))
+
+        list_enclosure = item_entry.find_parent("enclosure", label="List").parent
+        detail_tab = list_enclosure.find("enclosure", label="Details")
+        if not detail_tab:
+            raise exceptions.EActivitiesHasChanged(
+                "Couldn't find detail mode tab"
+            )
+        self.eactivities.activate_tab(document_soup, detail_tab.attrs['id'])
+        self.eactivities.data_search(
+            document_soup, detail_tab.attrs['id'], item_id, tab=True
+        )
+
+        return self.parse_item(
+            list_enclosure.find("enclosure", label="Details"),
+            item_entry.find_parent("infotablerow")
+        )
+
+    def parse_list_row(self, row_soup, charging):
+        other_committee_column = 'Receiving Committee' if not charging else 'Charged Committee'
+        other_committee = {}
+        other_committee['name'], other_committee['id'] = utils.split_role(
+            self.parse_field(row_soup, other_committee_column, cell=True)
+        )
+
+        receiving_committee = self.club_ident if charging else other_committee
+        charged_committee = other_committee if charging else self.club_ident
+
+        return {
+            'id': self.parse_field(row_soup, "Charge Number", cell=True),
+            'status': self.parse_field(row_soup, "Charge Status", 'status', cell=True),
+            'gross_amount': self.parse_field(row_soup, AMOUNT_RE, "money", cell=True),
+            'charged_committee': charged_committee,
+            'receiving_committee': receiving_committee
+        }
+
+    def parse_item(self, item_soup, item_entry):
+        data = {}
+
+        _, data['id'] = utils.split_role(
+            item_soup.xmlcurrenttitle.get_text()
+        )
+        data['id'] = int(data['id'])
+
+        receiving_committee = self.parse_field(item_soup, "Receiving Committee")
+        committee_being_charged = self.parse_field(item_soup, "Committee Being Charged")
+        if receiving_committee:
+            data['receiving_committee'] = rc = {}
+            rc['name'], rc['id'] = utils.split_role(receiving_committee)
+            data['charged_committee'] = self.club_ident
+        else:
+            data['charged_committee'] = cc = {}
+            cc['name'], cc['id'] = utils.split_role(committee_being_charged)
+            data['receiving_committee'] = self.club_ident
+
+        # this isn't exposed in the "Details" view for some reason.
+        # why? I don't know.
+        # it's just how it works.
+        data['status'] = self.parse_field(item_entry, "Charge Status", 'status', cell=True)
+
+        data['gross_amount'] = self.parse_field(item_soup, AMOUNT_RE, 'money')
+        data['notes'] = self.parse_field(item_soup, "Notes")
+
+        data['audit_trail'] = self.parse_audit_trail(item_soup)
+        data['next_authorisers'] = self.parse_next_authorisers(item_soup)
+
+        data['transaction_lines'] = []
+
+        for tx_line_soup in item_soup.find("infotablehead", text=u'Account').find_parent("infotable").find_all("infotablerow"):
+            tx_line = {}
+            tx_line['description'] = self.parse_field(tx_line_soup, "Description", cell=True)
+
+            tx_line['value'] = {}
+            tx_line['value']['gross'] = self.parse_field(tx_line_soup, AMOUNT_RE, 'money', cell=True)
+            tx_line['value'] = utils.munge_value(tx_line['value'])
+
+            tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
+            tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
+            tx_line['funding_source'] = self.parse_field(tx_line_soup, "Funding", 'account', cell=True)
+
+            data['transaction_lines'].append(tx_line)
+
+        return data
