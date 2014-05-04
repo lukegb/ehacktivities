@@ -1,6 +1,7 @@
 class EActivitiesException(Exception):
     pass
 
+
 class EActivitiesServerException(EActivitiesException):
     def __init__(self, inner):
         self.inner = inner
@@ -14,6 +15,7 @@ class EActivitiesServerException(EActivitiesException):
     def __repr__(self):
         return "<EActivitiesServerException(" + repr(self.inner) + ">"
 
+
 class EActivitiesError(EActivitiesException):
     def __init__(self, error_code, return_code):
         self.error_code = error_code
@@ -24,20 +26,27 @@ class EActivitiesError(EActivitiesException):
         ec, rc = int(self.error_code), int(self.return_code)
         if ec == 1:  # HTTP error?
             if rc == 1:
-                return u"Chosen file is too large, please choose a different file."
+                return u"Chosen file is too large, " + \
+                       u"please choose a different file."
             elif rc == 4:
                 return u"No file(s) chosen for upload."
             elif rc == 5:
-                return u"Unable to save file based on permissions, please choose a different file."
+                return u"Unable to save file based on permissions, " + \
+                       u"please choose a different file."
             elif rc == 8:
-                return u"Unable to save file(s) due to timeout reached. Please try again later."
+                return u"Unable to save file(s) due to timeout reached. " + \
+                       u"Please try again later."
             elif rc == 60001:
-                return u"Unable to save file due to a very similar one already used, please rename the file if this is a mistake."
+                return u"Unable to save file due to a very similar one " + \
+                       u"already used, please rename the file if this " + \
+                       u"is a mistake."
             elif rc == 60002:
-                return u"Only the first 20 files have been uploaded due to file limit, please re-upload the other files separately."
+                return u"Only the first 20 files have been uploaded due to " + \
+                       u"file limit, please re-upload the other files" + \
+                       u"separately."
             else:
                 return u"Unknown HTTP error %d" % (rc,)
-        elif rc == 2: # SQL errors
+        elif rc == 2:  # SQL errors
             if rc == -1:
                 return u"No connection exists. The database may be down."
             elif rc == -15:
@@ -106,7 +115,10 @@ class EActivitiesError(EActivitiesException):
             elif rc == 13:
                 return u"Not logged in - cannot upload files."
             elif rc == 14:
-                return u"You are viewing non-natural data, therefore do not have permission to do that. Honestly, you should not even see this, so if you do, please tell someone."
+                return u"You are viewing non-natural data, " + \
+                       u"therefore do not have permission to do that." + \
+                       u"Honestly, you should not even see this, " + \
+                       u"so if you do, please tell someone."
             elif rc == 15:
                 return u"You are already viewing that data!"
             elif rc == 16:
@@ -132,7 +144,7 @@ class EActivitiesError(EActivitiesException):
                 return u"Complete fields, THEN upload a file!"
             elif rc == 6:
                 return u"File type not yet allowed."
-            elif rc == 7: 
+            elif rc == 7:
                 return u"Image too large."
             elif rc == 8:
                 return u"'Something' is wrong with the file."
@@ -159,7 +171,9 @@ class EActivitiesError(EActivitiesException):
             elif rc == 2:
                 return u"Error committing submission (in ladder)."
             elif rc == 3:
-                return u"Further authorisation required, but there is no-one available to do so because you can't authorise twice!"
+                return u"Further authorisation required," + \
+                       u"but there is no-one available to do so" + \
+                       u"because you can't authorise twice!"
             elif rc == 4:
                 return u"Authorisation is being updated elsewhere?"
             elif rc == 5:
@@ -184,11 +198,14 @@ class EActivitiesError(EActivitiesException):
     def __repr__(self):
         return "EActivitiesError(%s, %s)" % (self.error_code, self.return_code)
 
+
 class AuthenticationFailed(EActivitiesException):
     pass
 
+
 class DoesNotExist(EActivitiesException):
     pass
+
 
 class EActivitiesHasChanged(EActivitiesException):
     pass

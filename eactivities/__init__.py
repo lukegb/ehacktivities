@@ -1,4 +1,6 @@
 import decimal
+import random
+import os
 
 import requests
 from bs4 import BeautifulSoup
@@ -8,14 +10,22 @@ from . import exceptions, clubs
 SESSION_COOKIE_NAME = 'ICU_eActivities'
 BASE_PATH = 'https://eactivities.union.ic.ac.uk'
 AJAX_HANDLER = BASE_PATH + '/common/ajax_handler.php'
+FILE_HANDLER = BASE_PATH + '/common/file_handler.php'
 
-USER_AGENT = 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.86 Safari/537.36 eHacktivities/1.0'
+USER_AGENT = 'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 ' + \
+             '(KHTML, like Gecko) Chrome/35.0.1916.86 Safari/537.36 ' + \
+             'eHacktivities/1.0'
+
+ESSL = os.getenv('EACTIVITIES_SSL_CERTIFICATE')
+
 
 class EActivities(object):
     def __init__(self, session=None, credentials=None):
         self.session = requests.session()
 
-        self.session.verify = '/home/leg13/charles-proxy-ssl-proxying-certificate.crt'
+        if ESSL:
+            self.session.verify = ESSL
+
         self.session.headers.update({'User-Agent': USER_AGENT})
 
         if session is not None:
@@ -65,8 +75,52 @@ class EActivities(object):
         else:
             raise exceptions.EActivitiesError(errorcode, returncode)
 
+    def file_handler(self, file_id, override=False):
+        return self.session.get(
+            FILE_HANDLER,
+            params={
+                'rand': random.randint(100, 999),
+                'rand2': random.randint(100, 999),
+                'id': file_id,
+                'override': 1 if override else 0
+            },
+            stream=True
+        )
+
+    def activate_tab(self, soup, tab_id):
+        tab_soup, _ = self.ajax_handler({
+            'ajax': 'activatetabs',
+            'navigate': tab_id
+        })
+        encid = tab_soup.data.encid.get_text()
+        soup_enc = soup.find("enclosure", id=encid)
+        soup_enc.clear()
+        soup_enc.append(tab_soup.data)
+        soup_enc.data.unwrap()
+        return soup
+
+    def data_search(self, soup, tab_id, thing_id, tab=False):
+        dssoup, _ = self.ajax_handler({
+            'ajax': 'datasearch',
+            'navigate': tab_id,
+            'value': thing_id,
+            'tab': tab
+        })
+
+        if dssoup.metadata.errorcode.get_text() == '-2' and \
+                dssoup.metadata.returnvalue.get_text() == '0':
+            return self.activate_tab(soup, tab_id)
+
+        return soup
+
     def authenticate(self, credentials):
-        soup, resp = self.ajax_handler({'ajax': 'login', 'name': credentials[0], 'pass': credentials[1], 'objid': 1})
+        soup, resp = self.ajax_handler({
+            'ajax': 'login',
+            'name': credentials[0],
+            'pass': credentials[1],
+            'objid': 1
+        })
+
         if soup.metadata.returnvalue.get_text() != '1':
             raise exceptions.AuthenticationFailed("credentials invalid")
 
@@ -89,9 +143,12 @@ class EActivities(object):
         return self.ajax_handler({'ajax': 'setup', 'navigate': page_id})
 
     def get_inline_info(self):
-        return self.ajax_handler({'ajax': 'setupinlineinfo', 'navigate': self.current_page_id})
+        return self.ajax_handler({
+            'ajax': 'setupinlineinfo',
+            'navigate': self.current_page_id
+        })
 
-    def _split_role(self, text):
+    def split_role(self, text):
         pos = len(text)
         cnt = 0
         for c in text[::-1]:
@@ -106,11 +163,18 @@ class EActivities(object):
                 raise ValueError("BRACKETS MISMATCH")
         raise ValueError("Couldn't find brackets enclosed value?!?")
 
-    def _format_price(self, text_price):
-        price = ''.join([x for x in unicode(text_price) if x in '0123456789.-'])
+    def format_price(self, text_price):
+        price = ''.join([
+            x for x in unicode(text_price) if x in '0123456789.-'
+        ])
         dprice = decimal.Decimal(price)
         dprice *= 100
-        return int(dprice.quantize(decimal.Decimal('1.'), rounding=decimal.ROUND_HALF_UP))
+        return self.quantize_decimal(dprice)
+
+    def quantize_decimal(self, dprice):
+        return int(dprice.quantize(
+            decimal.Decimal('1.'), rounding=decimal.ROUND_HALF_UP
+        ))
 
     def load_roles(self):
         roles = {}
@@ -118,18 +182,22 @@ class EActivities(object):
 
         # get the sidebar
         sidebar_soup, _ = self.get_inline_info()
-        position, committee = self._split_role(sidebar_soup.find(class_="currentrole").get_text())
+        position, committee = self.split_role(
+            sidebar_soup.find(class_="currentrole").get_text()
+        )
         current_role = {
             'position': position,
             'committee': committee,
             'current': True
         }
 
-        for role_option in sidebar_soup.data.find_all('p', class_='otherroles'):
+        for role_option in sidebar_soup.data.find_all(
+            'p', class_='otherroles'
+        ):
             role_id = role_option.span.attrs['onclick']
             role_id = int(role_id[role_id.find("'")+1:role_id.rfind("'")])
             role_name = role_option.span.get_text()
-            position, committee = self._split_role(role_name)
+            position, committee = self.split_role(role_name)
             roles[role_id] = {
                 'id': role_id,
                 'position': position,
@@ -142,7 +210,7 @@ class EActivities(object):
             role_id = role_menuopt.method.get_text()
             role_id = int(role_id[role_id.find("'")+1:role_id.rfind("'")])
             role_name = role_menuopt.label.get_text()
-            position, committee = self._split_role(role_name)
+            position, committee = self.split_role(role_name)
             roles[role_id] = {
                 'id': role_id,
                 'position': position,
@@ -151,10 +219,10 @@ class EActivities(object):
             }
 
         # now try to work out what the current role is
-        role_ids = sorted(roles.keys())
+        role_ids = set(roles.keys())
         max_role_id = max(roles.keys())
         for x in range(0, max_role_id):
-            if x not in roles.keys():
+            if x not in role_ids:
                 current_role_id = x
                 break
         else:
@@ -167,7 +235,9 @@ class EActivities(object):
         self.roles = lambda: self._roles
 
     def switch_role(self, role_id):
-        self.ajax_handler({'ajax': 'changerole', 'navigate': '1', 'id': role_id})
+        self.ajax_handler({
+            'ajax': 'changerole', 'navigate': '1', 'id': role_id
+        })
 
         for _, role in self._roles.items():
             if role['current']:
@@ -176,3 +246,42 @@ class EActivities(object):
 
     def club(self, club_id):
         return clubs.Club(self, club_id)
+
+    def format_year(self, year):
+        start_year = str(year % 100)[-2:]
+        end_year = str((int(start_year) + 1) % 100)[-2:]
+        return "{}-{}".format(start_year, end_year)
+
+    def split_account_bracket(self, bracketed_text):
+        thing_name, thing_id = self.split_role(bracketed_text)
+        return {'id': thing_id, 'name': thing_name}
+
+    def format_vat(self, vat_str):
+        vat_type, vat_rate = self.split_role(vat_str)
+        vat_type = vat_type[:vat_type.find(' ')]
+
+        vat_rate = ''.join([
+            x for x in unicode(vat_rate) if x in '0123456789.-'
+        ])
+        dvat_rate = decimal.Decimal(vat_rate)
+        dvat_rate /= 100
+        dvat_rate += 1
+
+        return {'rate': vat_type, 'value': dvat_rate}
+
+    def munge_value(self, value):
+        if 'vat' not in value:
+            return value
+
+        if 'gross' in value and 'net' in value:
+            return value
+        elif 'gross' in value:
+            dgross = decimal.Decimal(value['gross'])
+            dnet = dgross / value['vat']['value']
+            value['net'] = self.quantize_decimal(dnet)
+        elif 'net' in value:
+            dnet = decimal.Decimal(value['net'])
+            dgross = dnet * value['vat']['value']
+            value['gross'] = self.quantize_decimal(dgross)
+
+        return value
