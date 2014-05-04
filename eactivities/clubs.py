@@ -15,7 +15,7 @@ class Club(object):
                 setattr(self, k, v)
             self.loaded_data = True
 
-        return super(Club, self).__getattr__(name)
+        return super(Club, self).__getattribute__(name)
 
     def fetch_name(self):
         soup, _ = self.eactivities.load_and_start(
@@ -71,17 +71,17 @@ class Club(object):
                     'value': details_value
                 }
 
-            info['active'] = details_dict['STATUS']['value'].get_text() \
+            info['active'] = details_dict['STATUS']['value'].get_text().strip() \
                 == 'Active'
             website = details_dict['WEBSITE']['value'].find("infofield")
             info['website'] = unicode(
-                website.attrs['link'] + website.get_text()
+                website.attrs['link'] + website.get_text().strip()
             )
             info['email'] = unicode(
-                details_dict['EMAIL']['value'].get_text() + '@imperial.ac.uk'
+                details_dict['EMAIL']['value'].get_text().strip() + '@imperial.ac.uk'
             )
             info['current_profile_entry'] = [
-                unicode(x.get_text())
+                unicode(x.get_text().strip())
                 for x in
                 details_dict['CURRENT PROFILE ENTRY']['value'].find_all(
                     'infofield'

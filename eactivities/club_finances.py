@@ -15,7 +15,7 @@ class ClubFinances(object):
             for k, v in self.load_data().iteritems():
                 setattr(self, k, v)
             self.loaded_data = True
-        return super(ClubFinances, self).__getattr__(name)
+        return super(ClubFinances, self).__getattribute__(name)
 
     def load_data(self):
         out = {}

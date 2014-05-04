@@ -19,8 +19,8 @@ ESSL = os.getenv('EACTIVITIES_SSL_CERTIFICATE')
 
 
 class EActivities(object):
-    def __init__(self, session=None, credentials=None):
-        self.session = requests.session()
+    def __init__(self, reqsession=None, session=None, credentials=None):
+        self.session = reqsession or requests.session()
 
         if ESSL:
             self.session.verify = ESSL
