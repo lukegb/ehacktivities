@@ -1,10 +1,12 @@
+# vim: set fileencoding=utf-8
+
 import decimal
 
 
 def format_year(year):
-    start_year = str(year % 100)[-2:]
-    end_year = str((int(start_year) + 1) % 100)[-2:]
-    return "{}-{}".format(start_year, end_year)
+    start_year = year % 100
+    end_year = (int(start_year) + 1) % 100
+    return "%02d-%02d" % (start_year, end_year)
 
 
 def split_account_bracket(bracketed_text):
@@ -61,8 +63,8 @@ def split_role(text):
 
 
 def format_price(text_price):
-    price = ''.join([
-        x for x in unicode(text_price) if x in '0123456789.-'
+    price = u''.join([
+        x for x in unicode(text_price) if x in u'0123456789.-'
     ])
     dprice = decimal.Decimal(price)
     dprice *= 100
