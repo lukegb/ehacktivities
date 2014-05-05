@@ -686,13 +686,26 @@ Note that this only affects anything if you have multiple SKUs.
 ### Get information about a club's keys [GET]
 + Response 200 (application/json)
 
-        [49]
+        [
+            {
+                "id": 49,
+                "name": "Some Union Room",
+                "people": [
+                    {
+                        "cid": "00123456",
+                        "name": "Jonny Jones"
+                    }
+                ]
+            }
+        ]
         
 ## Club Key Lists [/clubs/{id}/{year}/keys/{key-id}]
 ### Get information about a club's key list [GET]
 + Response 200 (application/json)
 
-        {
-            "active": [00123456, 00123457],
-            "inactive": []
-        }
+        [
+            {
+                "cid": "00123456",
+                "name": "Jonny Jones"
+            }
+        ]
