@@ -60,23 +60,32 @@ class ClubFinances(object):
 
         return out
 
+    # Income #
     def banking_records(self):
         return ClubBankingRecords(self)
 
+    def sales_invoices(self):
+        return ClubSalesInvoices(self)
+    # TODO: Credit Notes
+
+    # Expenditure #
     def claims(self):
         return ClubClaims(self)
 
     def purchase_orders(self):
         return ClubPurchaseOrders(self)
+    # TODO: Imprests, Credit Card Requests, Charitable Donations
 
-    def sales_invoices(self):
-        return ClubSalesInvoices(self)
-
+    # Transfers #
     def transaction_corrections(self):
         return ClubTransactionCorrections(self)
 
     def internal_charges(self):
         return ClubInternalCharges(self)
+
+    def members_funds_redistributions(self):
+        return ClubMembersFundsRedistributions(self)
+    # TODO: Designated Members Funds Transfers, Funding Redistributions
 
     class DoesNotExist(exceptions.DoesNotExist):
         pass
@@ -193,7 +202,7 @@ class ClubFinancialDocumentation(object):
                 list_enclosure.find("enclosure", label="Details")
             )
         else:
-            row_item = list_enclosure.find("infotablecell", text=item_id).find_parent("infotablerow")
+            row_item = list_enclosure.find("infotablecell", text=unicode(item_id)).find_parent("infotablerow")
             return self.parse_item(
                 list_enclosure.find("enclosure", label="Details"),
                 row_item
@@ -390,6 +399,13 @@ class ClubSalesInvoices(ClubFinancialDocumentation):
         ]
 
         return data
+
+    def item_pdf(self, item_id):
+        # prime $_SESSION
+        self.eactivities.load_and_start('/finance/documents')
+
+        # and get the invoice PDF!
+        return self.eactivities.streaming_get('/finance/documents/invoices/pdf/%d' % (item_id,))
 
 
 class ClubClaims(ClubFinancialDocumentation):
@@ -590,6 +606,76 @@ class ClubTransactionCorrections(ClubFinancialDocumentation):
             tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
             tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
             tx_line['funding_source'] = self.parse_field(tx_line_soup, "Funding", 'account', cell=True)
+
+            data['to_transaction_lines'].append(tx_line)
+
+        return data
+
+
+class ClubMembersFundsRedistributions(ClubFinancialDocumentation):
+    document_type = 'Transfers'
+    document_name = 'Members Funds Redistributions'
+
+    item_needs_row = True
+
+    def parse_list_row(self, row_soup):
+        return {
+            'id': self.parse_field(row_soup, "Redistribution", cell=True),
+            'person': self.parse_field(row_soup, "Person", cell=True),
+            'status': self.parse_field(row_soup, "Redistribution Status", 'status', cell=True),
+            'funding': self.parse_field(row_soup, "Funding", 'account', cell=True),
+            'gross_amount': self.parse_field(row_soup, AMOUNT_RE, "money", cell=True)
+        }
+
+    def parse_item(self, item_soup, row_soup):
+        # we need the "to" transaction lines!
+        from_enclosure = item_soup.find("enclosure", label="From Lines")
+        to_enclosure = item_soup.find("enclosure", label="To Lines")
+        self.eactivities.activate_tab(item_soup, to_enclosure.attrs['id'])
+
+        data = {}
+
+        _, data['id'] = utils.split_role(
+            item_soup.xmlcurrenttitle.get_text()
+        )
+        data['id'] = int(data['id'])
+
+        data['person'] = self.parse_field(item_soup, "Person")
+        data['funding'] = self.parse_field(item_soup, "Funding", 'account')
+        data['gross_amount'] = self.parse_field(item_soup, AMOUNT_RE, 'money')
+        data['notes'] = self.parse_field(item_soup, "Notes")
+
+        data['status'] = self.parse_field(row_soup, "Redistribution Status", 'status', cell=True)
+
+        data['audit_trail'] = self.parse_audit_trail(item_soup)
+        data['next_authorisers'] = self.parse_next_authorisers(item_soup)
+
+        data['from_transaction_lines'] = []
+        data['to_transaction_lines'] = []
+
+        for tx_line_soup in from_enclosure.find_all("infotablerow"):
+            tx_line = {}
+            tx_line['description'] = self.parse_field(tx_line_soup, "Description", cell=True)
+
+            tx_line['value'] = {}
+            tx_line['value']['gross'] = self.parse_field(tx_line_soup, AMOUNT_RE, 'money', cell=True)
+            tx_line['value'] = utils.munge_value(tx_line['value'])
+
+            tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
+            tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
+
+            data['from_transaction_lines'].append(tx_line)
+
+        for tx_line_soup in to_enclosure.find_all("infotablerow"):
+            tx_line = {}
+            tx_line['description'] = self.parse_field(tx_line_soup, "Description", cell=True)
+
+            tx_line['value'] = {}
+            tx_line['value']['gross'] = self.parse_field(tx_line_soup, AMOUNT_RE, 'money', cell=True)
+            tx_line['value'] = utils.munge_value(tx_line['value'])
+
+            tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
+            tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
 
             data['to_transaction_lines'].append(tx_line)
 
