@@ -406,4 +406,4 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
 
         sii = si.item(u'602067')
         self.assertEqual(sii['date'], datetime.date(2013, 6, 25))
-        self.assertEqual(self.fetch_sha1(si.pdf(sii['id'], sii['purchase_order_attachments'][0])), 'xxx')
+        self.assertEqual(self.fetch_sha1(si.pdf(sii['id'], sii['purchase_order_attachments'][0])), 'cc9ccb9807694f654aed6ddd590ac404d40ca3e0')
