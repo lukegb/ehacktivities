@@ -95,7 +95,7 @@ class ClubRecordDocument(object):
             if len(split_output_name) > 1:
                 operating = out
                 for segment in split_output_name[:-1]:
-                    operating = out.setdefault(segment, {})
+                    operating = operating.setdefault(segment, {})
                 operating[split_output_name[-1]] = field_value
             else:
                 out[output_name] = field_value
