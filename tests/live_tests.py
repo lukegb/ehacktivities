@@ -1,5 +1,4 @@
 import unittest
-import decimal
 import os
 
 from nose.plugins.attrib import attr
