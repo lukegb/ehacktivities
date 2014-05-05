@@ -7,3 +7,7 @@ install:
   - pip install tox
 script:
   - tox -e $TOX_ENV
+notifications:
+  webhooks:
+    urls:
+      - http://n.tkte.ch/h/2689/bYIuyJQRwH5nfdGQu-jbjv23
