@@ -6,9 +6,9 @@ from nose.plugins.attrib import attr
 from eactivities import EActivities
 
 # loading secrets from environment!
-username = os.getenv('EHACKTIVITIES_TEST_USERNAME')
-password = os.getenv('EHACKTIVITIES_TEST_PASSWORD')
-test_club_id = int(os.getenv('EHACKTIVITIES_TEST_CLUB', '0'))
+username = os.getenv('EHACK_TEST_USERNAME')
+password = os.getenv('EHACK_TEST_PASSWORD')
+test_club_id = int(os.getenv('EHACK_TEST_CLUB', '0'))
 
 credentials = username is not None and password is not None and test_club_id
 
@@ -21,7 +21,7 @@ def setup():
 @attr('live')
 class EActivitiesBaseTestCase(unittest.TestCase):
     def setUp(self):
-        self.eactivities = EActivities(credentials=(username, password))
+        self.eactivities = EActivities(credentials=(username, password.decode('base64')))
 
     def tearDown(self):
         self.eactivities.logout()
