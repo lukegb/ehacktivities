@@ -57,7 +57,7 @@ def split_role(text):
         elif c == '(':
             cnt -= 1
         if cnt == 0:
-            return text[:pos-1], text[pos+1:-1]
+            return text[:pos - 1], text[pos + 1:-1]
         elif cnt < 0:
             raise ValueError("BRACKETS MISMATCH")
     raise ValueError("Couldn't find brackets enclosed value?!?")
@@ -67,6 +67,8 @@ def format_price(text_price):
     price = u''.join([
         x for x in unicode(text_price) if x in u'0123456789.-'
     ])
+    if price == '':
+        return None
     return decimal.Decimal(price)
 
 

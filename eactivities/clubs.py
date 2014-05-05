@@ -1,4 +1,6 @@
-from . import exceptions, club_finances, utils
+# vim: set fileencoding=utf-8
+
+from . import exceptions, club_finances, club_documentation, utils
 
 
 class Club(object):
@@ -160,6 +162,9 @@ class Club(object):
 
     def finances(self, year):
         return club_finances.ClubFinances(self, year)
+
+    def documentation(self):
+        return club_documentation.ClubDocumentation(self)
 
     class DoesNotExist(exceptions.DoesNotExist):
         pass
