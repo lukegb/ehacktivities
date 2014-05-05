@@ -1,5 +1,6 @@
 import unittest
 import decimal
+
 from mock import MagicMock
 from bs4 import BeautifulSoup
 
