@@ -236,7 +236,7 @@ class ClubFinancialDocumentation(object):
             )
 
             person_with_role = audit_entry['notes']
-            person_with_role = person_with_role[:person_with_role.find(')) ')+2]
+            person_with_role = person_with_role[:person_with_role.find(')) ') + 2]
             person, _ = utils.split_role(person_with_role)
             audit_entry['name'] = person
 
@@ -278,7 +278,8 @@ class ClubFinancialDocumentation(object):
             alias=alias
         )
 
-        if not x:
+        if not x or x.get_text() == u'\xa0':
+            # don't even ask why eActivities \xa0 when it's "NULL" or whatever its equivalent is
             return None
 
         return dt[type](x.get_text())
@@ -303,7 +304,7 @@ class ClubBankingRecords(ClubFinancialDocumentation):
         _, data['id'] = utils.split_role(
             item_soup.xmlcurrenttitle.get_text()
         )
-        data['id'] = int(data['id'])
+        data['id'] = unicode(data['id'])
         data['date'] = self.parse_field(item_soup, "Date Paid In", 'date')
         data['transaction_lines'] = []
 
@@ -352,7 +353,7 @@ class ClubSalesInvoices(ClubFinancialDocumentation):
         _, data['id'] = utils.split_role(
             item_soup.xmlcurrenttitle.get_text()
         )
-        data['id'] = int(data['id'])
+        data['id'] = unicode(data['id'])
         data['date'] = self.parse_field(item_soup, "Invoice Date", 'date')
         data['customer'] = {
             'name': self.parse_field(item_soup, "Customer"),
@@ -405,7 +406,7 @@ class ClubSalesInvoices(ClubFinancialDocumentation):
         self.eactivities.load_and_start('/finance/documents')
 
         # and get the invoice PDF!
-        return self.eactivities.streaming_get('/finance/documents/invoices/pdf/%d' % (item_id,))
+        return self.eactivities.streaming_get('/finance/documents/invoices/pdf/%s' % (unicode(item_id),))
 
 
 class ClubClaims(ClubFinancialDocumentation):
@@ -427,7 +428,7 @@ class ClubClaims(ClubFinancialDocumentation):
         _, data['id'] = utils.split_role(
             item_soup.xmlcurrenttitle.get_text()
         )
-        data['id'] = int(data['id'])
+        data['id'] = unicode(data['id'])
         data['payment_date'] = self.parse_field(item_soup, "Payment Date", "date")
         data['person'] = self.parse_field(item_soup, "Person")
         data['notes'] = self.parse_field(item_soup, "Notes")
@@ -482,7 +483,7 @@ class ClubPurchaseOrders(ClubFinancialDocumentation):
         _, data['id'] = utils.split_role(
             item_soup.xmlcurrenttitle.get_text()
         )
-        data['id'] = int(data['id'])
+        data['id'] = unicode(data['id'])
         data['payment_date'] = self.parse_field(item_soup, "Payment Date", 'date')
         data['supplier'] = {
             'name': self.parse_field(item_soup, "Supplier"),
@@ -570,7 +571,7 @@ class ClubTransactionCorrections(ClubFinancialDocumentation):
         _, data['id'] = utils.split_role(
             item_soup.xmlcurrenttitle.get_text()
         )
-        data['id'] = int(data['id'])
+        data['id'] = unicode(data['id'])
 
         data['gross_amount'] = self.parse_field(item_soup, AMOUNT_RE, 'money')
         data['status'] = self.parse_field(item_soup, "Correction Status", 'status')
@@ -638,7 +639,7 @@ class ClubMembersFundsRedistributions(ClubFinancialDocumentation):
         _, data['id'] = utils.split_role(
             item_soup.xmlcurrenttitle.get_text()
         )
-        data['id'] = int(data['id'])
+        data['id'] = unicode(data['id'])
 
         data['person'] = self.parse_field(item_soup, "Person")
         data['funding'] = self.parse_field(item_soup, "Funding", 'account')
@@ -772,7 +773,7 @@ class ClubInternalCharges(ClubFinancialDocumentation):
         _, data['id'] = utils.split_role(
             item_soup.xmlcurrenttitle.get_text()
         )
-        data['id'] = int(data['id'])
+        data['id'] = unicode(data['id'])
 
         receiving_committee = self.parse_field(item_soup, "Receiving Committee")
         committee_being_charged = self.parse_field(item_soup, "Committee Being Charged")
