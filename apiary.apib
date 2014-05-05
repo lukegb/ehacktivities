@@ -703,9 +703,13 @@ Note that this only affects anything if you have multiple SKUs.
 ### Get information about a club's key list [GET]
 + Response 200 (application/json)
 
-        [
-            {
-                "cid": "00123456",
-                "name": "Jonny Jones"
-            }
-        ]
+        {
+            "id": 49,
+            "name": "Some Union Room",
+            "people": [
+                {
+                    "cid": "00123456",
+                    "name": "Jonny Jones"
+                }
+            ]
+        }
