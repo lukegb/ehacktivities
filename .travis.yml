@@ -1,14 +1,14 @@
-python: 2.7
-script: 
-- tox -e $TOX_ENV
+install: 
+- pip install tox
 language: python
-env: 
-  - TOX_ENV=py27
-  - TOX_ENV=flake8
-  - secure: FAjLb+NQ0u35D5o+khlJdNKOcoeZS1YQcPL5GXOe2D7lMY0MuFOFVty/aNeXV4qSYdMwRvDRr0IZmy1YdkIhIoNrJkaInfFR99ff7bw44v8DI0HwWZry9WIHD5Z/Y6GMqXPazikgOV412Osp+mgZfePCuHkv+lIfOhpLGNG7Das=
 notifications: 
   webhooks: 
     urls: 
     - http://n.tkte.ch/h/2689/bYIuyJQRwH5nfdGQu-jbjv23
-install: 
-- pip install tox
+env:
+  - TOX_ENV=py27
+  - TOX_ENV=flake8 
+  - secure: fXSpLXwe+Gvf1ISjInKSus7sP42DY8vAvMnl4UJFAxof6neITj+P2MjyEFR911hzhDJXOK/MwuvufZtNfTIPD4W96lXUx+lWoDrK1/AygxtvU8mq7NADi53hKrk/CYMuhHMTmPqeQ9kJI2Wlgz4WwuEXzvVd7L4Yw039xgpm7a0=
+python: 2.7
+script: 
+- tox -e $TOX_ENV
