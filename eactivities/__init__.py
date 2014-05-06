@@ -212,10 +212,5 @@ class EActivities(object):
             'ajax': 'changerole', 'navigate': '1', 'id': role_id
         })
 
-        for _, role in self._roles.items():
-            if role['current']:
-                role['current'] = False
-        self._roles[role_id]['current'] = True
-
     def club(self, club_id):
         return clubs.Club(self, club_id)
