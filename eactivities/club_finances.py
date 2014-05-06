@@ -336,6 +336,8 @@ class ClubSalesInvoices(ClubFinancialDocumentation):
     document_type = 'Income'
     document_name = 'Sales Invoices'
 
+    item_needs_row = True
+
     def parse_list_row(self, row_soup):
         return {
             'id': self.parse_field(row_soup, "Invoice Number", cell=True),
@@ -343,11 +345,12 @@ class ClubSalesInvoices(ClubFinancialDocumentation):
             'customer': {
                 'name': self.parse_field(row_soup, "Customer", cell=True)
             },
-            'po_number': self.parse_field(row_soup, "Purchase Order Number", cell=True),
-            'gross_amount': self.parse_field(row_soup, AMOUNT_RE, 'money', cell=True)
+            'customer_purchase_order_number': self.parse_field(row_soup, "Purchase Order Number", cell=True),
+            'gross_amount': self.parse_field(row_soup, AMOUNT_RE, 'money', cell=True),
+            'status': self.parse_field(row_soup, 'Invoice Status', 'status', cell=True),
         }
 
-    def parse_item(self, item_soup):
+    def parse_item(self, item_soup, row_soup):
         data = {}
 
         _, data['id'] = utils.split_role(
@@ -370,10 +373,12 @@ class ClubSalesInvoices(ClubFinancialDocumentation):
         data['next_authorisers'] = self.parse_next_authorisers(item_soup)
         data['transaction_lines'] = []
 
+        data['status'] = self.parse_field(row_soup, 'Invoice Status', 'status', cell=True)
+
         for tx_line_soup in item_soup.find("infotablehead", text=u'Account').find_parent("infotable").find_all("infotablerow"):
             tx_line = {}
             tx_line['description'] = self.parse_field(tx_line_soup, "Description", cell=True)
-            tx_line['quantity'] = self.parse_field(tx_line_soup, "Quantity", 'number')
+            tx_line['quantity'] = self.parse_field(tx_line_soup, "Quantity", 'number', cell=True)
 
             tx_line['unit_value'] = {}
             tx_line['unit_value']['gross'] = self.parse_field(tx_line_soup, PRICE_RE, 'money', cell=True)
@@ -388,7 +393,6 @@ class ClubSalesInvoices(ClubFinancialDocumentation):
             tx_line['account'] = self.parse_field(tx_line_soup, "Account", 'account', cell=True)
             tx_line['activity'] = self.parse_field(tx_line_soup, "Activity", 'account', cell=True)
             tx_line['funding_source'] = self.parse_field(tx_line_soup, "Funding", 'account', cell=True)
-            tx_line['consolidation'] = self.parse_field(tx_line_soup, "Consolidation", 'account', cell=True)
 
             data['transaction_lines'].append(tx_line)
 
@@ -624,7 +628,7 @@ class ClubMembersFundsRedistributions(ClubFinancialDocumentation):
             'id': self.parse_field(row_soup, "Redistribution", cell=True),
             'person': self.parse_field(row_soup, "Person", cell=True),
             'status': self.parse_field(row_soup, "Redistribution Status", 'status', cell=True),
-            'funding': self.parse_field(row_soup, "Funding", 'account', cell=True),
+            'funding_source': self.parse_field(row_soup, "Funding", 'account', cell=True),
             'gross_amount': self.parse_field(row_soup, AMOUNT_RE, "money", cell=True)
         }
 
@@ -642,7 +646,7 @@ class ClubMembersFundsRedistributions(ClubFinancialDocumentation):
         data['id'] = unicode(data['id'])
 
         data['person'] = self.parse_field(item_soup, "Person")
-        data['funding'] = self.parse_field(item_soup, "Funding", 'account')
+        data['funding_source'] = self.parse_field(item_soup, "Funding", 'account')
         data['gross_amount'] = self.parse_field(item_soup, AMOUNT_RE, 'money')
         data['notes'] = self.parse_field(item_soup, "Notes")
 
@@ -700,7 +704,7 @@ class ClubInternalCharges(ClubFinancialDocumentation):
         nice_name = unicode(charged_enclosure.attrs['label'])
         nice_name = nice_name[:nice_name.find(" Charged")]
         self.club_ident = {
-            'id': self.club_finances.club.id,
+            'id': unicode(self.club_finances.club.id),
             'name': nice_name,
         }
 
@@ -722,7 +726,7 @@ class ClubInternalCharges(ClubFinancialDocumentation):
         nice_name = unicode(charged_enclosure.attrs['label'])
         nice_name = nice_name[:nice_name.find(" Charged")]
         self.club_ident = {
-            'id': self.club_finances.club.id,
+            'id': unicode(self.club_finances.club.id),
             'name': nice_name,
         }
 
