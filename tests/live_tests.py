@@ -219,13 +219,16 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             self.assertEqual(sil_zero['gross_amount'], sil_zero_item['gross_amount'])
 
             self.assertItemsEqual(sil_zero.keys(), [
-                'id', 'date', 'customer', 'customer_purchase_order_number', 'gross_amount'
+                'id', 'date', 'customer',
+                'customer_purchase_order_number', 'gross_amount',
+                'status'
             ])
             self.assertItemsEqual(sil_zero_item.keys(), [
                 'id', 'date', 'customer', 'international',
                 'customer_purchase_order_number', 'audit_trail',
                 'next_authorisers', 'transaction_lines',
-                'gross_amount', 'purchase_order_attachments'
+                'gross_amount', 'purchase_order_attachments',
+                'status'
             ])
 
             si.item_pdf(sil_zero_item['id'])
@@ -337,14 +340,14 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             self.assertEqual(mfrl_zero['id'], mfrl_zero_item['id'])
             self.assertEqual(mfrl_zero['person'], mfrl_zero_item['person'])
             self.assertEqual(mfrl_zero['status'], mfrl_zero_item['status'])
-            self.assertEqual(mfrl_zero['funding'], mfrl_zero_item['funding'])
+            self.assertEqual(mfrl_zero['funding_source'], mfrl_zero_item['funding_source'])
             self.assertEqual(mfrl_zero['gross_amount'], mfrl_zero_item['gross_amount'])
 
             self.assertItemsEqual(mfrl_zero.keys(), [
-                'id', 'person', 'status', 'funding', 'gross_amount'
+                'id', 'person', 'status', 'funding_source', 'gross_amount'
             ])
             self.assertItemsEqual(mfrl_zero_item.keys(), [
-                'id', 'person', 'funding', 'gross_amount', 'notes',
+                'id', 'person', 'funding_source', 'gross_amount', 'notes',
                 'status', 'audit_trail', 'next_authorisers', 'from_transaction_lines',
                 'to_transaction_lines'
             ])
