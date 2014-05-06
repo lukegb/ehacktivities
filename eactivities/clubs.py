@@ -6,8 +6,7 @@ from . import exceptions, club_finances, club_documentation, utils
 class Club(object):
     def __init__(self, eactivities, club_id):
         self.eactivities = eactivities
-        self.id = club_id
-        self.name = self.fetch_name()
+        self.id = unicode(club_id)
 
         self.loaded_data = False
 
@@ -18,24 +17,6 @@ class Club(object):
             self.loaded_data = True
 
         return super(Club, self).__getattribute__(name)
-
-    def fetch_name(self):
-        soup, _ = self.eactivities.load_and_start(
-            '/finance/transactions/{}'.format(self.id)
-        )
-
-        title = unicode(soup.find('xmlcurrenttitle').get_text())
-        if title == 'NO RECORDS':
-            raise Club.DoesNotExist("No financial records available for club")
-        elif '(' not in title:
-            raise exceptions.EActivitiesHasChanged(
-                'No ( found in club - has format changed?'
-            )
-
-        name, club_id = utils.split_role(title)
-        assert club_id == unicode(self.id)
-
-        return name
 
     def pick_best_role(self):
         best_roles = []
@@ -52,8 +33,7 @@ class Club(object):
 
     def load_data(self):
         info = {
-            'id': self.id,
-            'name': self.name
+            'id': self.id
         }
 
         # try and load admin/csp/details
@@ -61,6 +41,8 @@ class Club(object):
             '/admin/csp/details/{}'.format(self.id)
         )
         if details_soup.xmlcurrenttitle.get_text() != 'NO RECORDS':
+            info['name'], _ = utils.split_role(details_soup.xmlcurrenttitle.get_text())
+
             # hooray!
             details_dict = {}
             details_bits = details_soup.find("enclosure", id="392")
@@ -129,6 +111,8 @@ class Club(object):
                 '/finance/transactions/{}'.format(self.id)
             )
             membership = {}
+
+            info['name'], _ = utils.split_role(membership_soup.xmlcurrenttitle.get_text())
 
             _, _, full_members_bit = membership_soup.find(
                 "infofield", alias="MemDetails"

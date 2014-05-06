@@ -32,8 +32,7 @@ class TestClub(unittest.TestCase):
 
     def test_init(self):
         self.assertEquals(self.club.eactivities, self.eactivities)
-        self.assertEquals(self.club.id, 211)
-        self.assertEquals(self.club.name, "RCC FERRET FANCIERS")
+        self.assertEquals(self.club.id, u'211')
 
     def test_getattr(self):
         self.eactivities.ajax_handler.return_value = BeautifulSoup(

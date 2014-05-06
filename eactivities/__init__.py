@@ -36,8 +36,6 @@ class EActivities(object):
             # authenticate
             self.authenticate(credentials)
 
-        self.load_roles()  # we need to do this on login, because eActivities
-
     def ajax_handler(self, data):
         try:
             resp = self.session.post(AJAX_HANDLER, data=data)
@@ -152,7 +150,7 @@ class EActivities(object):
             'navigate': self.current_page_id
         })
 
-    def load_roles(self):
+    def roles(self):
         roles = {}
         self.load_and_start('/')
 
@@ -207,8 +205,7 @@ class EActivities(object):
         current_role['id'] = current_role_id
         roles[current_role_id] = current_role
 
-        self._roles = roles
-        self.roles = lambda: self._roles
+        return roles
 
     def switch_role(self, role_id):
         self.ajax_handler({
