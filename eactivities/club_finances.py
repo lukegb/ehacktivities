@@ -149,8 +149,6 @@ class ClubFinancialDocumentation(object):
             )
         dname_tab = dname_enc.find("enclosure", label=self.document_name)
         if not dname_tab:
-            with open('blah.xml', 'wb') as f:
-                f.write(unicode(document_soup).encode('utf-8'))
             raise self.DoesNotExist(
                 "Couldn't find document '{}'".format(self.document_name)
             )
@@ -180,6 +178,10 @@ class ClubFinancialDocumentation(object):
         # here we go
         list_soup, _ = self.optimus_prime()
 
+        if list_soup.find("div", class_="noinfo") is not None:
+            # no records
+            return []
+
         items = []
         for row_soup in list_soup.infotable.find_all("infotablerow"):
             items.append(self.parse_list_row(row_soup))
@@ -200,12 +202,20 @@ class ClubFinancialDocumentation(object):
             document_soup, detail_tab.attrs['id'], item_id, tab=True
         )
 
+        if list_soup.find("div", class_="noinfo") is not None:
+            # no records
+            raise self.DoesNotExist("No document with ID {}".format(item_id))
+
+        row_item = list_enclosure.find("infotablecell", text=unicode(item_id)).find_parent("infotablerow")
+        if row_item is None:
+            # this item doesn't exist
+            raise self.DoesNotExist("No document with ID {}".format(item_id))
+
         if not self.item_needs_row:
             return self.parse_item(
                 list_enclosure.find("enclosure", label="Details")
             )
         else:
-            row_item = list_enclosure.find("infotablecell", text=unicode(item_id)).find_parent("infotablerow")
             return self.parse_item(
                 list_enclosure.find("enclosure", label="Details"),
                 row_item
@@ -334,6 +344,9 @@ class ClubBankingRecords(ClubFinancialDocumentation):
 
         return data
 
+    class DoesNotExist(ClubFinancialDocumentation.DoesNotExist):
+        pass
+
 
 class ClubSalesInvoices(ClubFinancialDocumentation):
     document_type = 'Income'
@@ -415,6 +428,9 @@ class ClubSalesInvoices(ClubFinancialDocumentation):
         # and get the invoice PDF!
         return self.eactivities.streaming_get('/finance/documents/invoices/pdf/%s' % (unicode(item_id),))
 
+    class DoesNotExist(ClubFinancialDocumentation.DoesNotExist):
+        pass
+
 
 class ClubClaims(ClubFinancialDocumentation):
     document_type = 'Expenditure'
@@ -464,6 +480,9 @@ class ClubClaims(ClubFinancialDocumentation):
         ]
 
         return data
+
+    class DoesNotExist(ClubFinancialDocumentation.DoesNotExist):
+        pass
 
 
 class ClubPurchaseOrders(ClubFinancialDocumentation):
@@ -555,6 +574,9 @@ class ClubPurchaseOrders(ClubFinancialDocumentation):
         # and get the PO PDF!
         return self.eactivities.streaming_get('/finance/documents/orders/pdf/%d' % (item_id,))
 
+    class DoesNotExist(ClubFinancialDocumentation.DoesNotExist):
+        pass
+
 
 class ClubTransactionCorrections(ClubFinancialDocumentation):
     document_type = 'Transfers'
@@ -618,6 +640,9 @@ class ClubTransactionCorrections(ClubFinancialDocumentation):
             data['to_transaction_lines'].append(tx_line)
 
         return data
+
+    class DoesNotExist(ClubFinancialDocumentation.DoesNotExist):
+        pass
 
 
 class ClubFundingRedistributions(ClubFinancialDocumentation):
@@ -683,6 +708,9 @@ class ClubFundingRedistributions(ClubFinancialDocumentation):
             data['to_transaction_lines'].append(tx_line)
 
         return data
+
+    class DoesNotExist(ClubFinancialDocumentation.DoesNotExist):
+        pass
 
 
 class ClubMembersFundsRedistributions(ClubFinancialDocumentation):
@@ -754,6 +782,9 @@ class ClubMembersFundsRedistributions(ClubFinancialDocumentation):
 
         return data
 
+    class DoesNotExist(ClubFinancialDocumentation.DoesNotExist):
+        pass
+
 
 class ClubInternalCharges(ClubFinancialDocumentation):
     document_type = 'Transfers'
@@ -762,6 +793,10 @@ class ClubInternalCharges(ClubFinancialDocumentation):
     def list(self):
         # here we go
         list_soup, document_soup = self.optimus_prime()
+
+        if list_soup.find("div", class_="noinfo") is not None:
+            # no records
+            return []
 
         charged_enclosure = list_soup.find_parent("enclosure")
         charging_enclosure = charged_enclosure.find_next_sibling("enclosure")
@@ -804,6 +839,9 @@ class ClubInternalCharges(ClubFinancialDocumentation):
             # expand the charging enclosure
             self.eactivities.activate_tab(document_soup, charging_enclosure.attrs['id'])
             item_entry = charging_enclosure.find(alias="Charge Number", text=unicode(item_id))
+
+        if item_entry is None:
+            raise self.DoesNotExist("No document with ID {}".format(item_id))
 
         list_enclosure = item_entry.find_parent("enclosure", label="List").parent
         detail_tab = list_enclosure.find("enclosure", label="Details")
@@ -886,3 +924,6 @@ class ClubInternalCharges(ClubFinancialDocumentation):
             data['transaction_lines'].append(tx_line)
 
         return data
+
+    class DoesNotExist(ClubFinancialDocumentation.DoesNotExist):
+        pass
