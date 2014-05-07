@@ -7,6 +7,9 @@ import hashlib
 from nose.plugins.attrib import attr
 
 from eactivities import EActivities
+from eactivities.parsers.documentation import InventoryParser, RiskAssessmentParser, KeyListsParser
+import eactivities.parsers.finances as finance_parsers
+
 
 # loading secrets from environment!
 username = os.getenv('EHACK_TEST_USERNAME')
@@ -81,11 +84,11 @@ class ClubTestCase(ClubBaseTestCase):
         self.assertIsNotNone(self.club.email)
         self.assertIsNotNone(self.club.current_profile_entry)
         self.assertEqual(len(self.club.current_profile_entry), 2)
-        self.assertIsNotNone(self.club.members)
-        self.assertItemsEqual(self.club.members.keys(), [
-            'full_members', 'full_members_quota',
-            'associate_members', 'membership_cost'
-        ])
+        self.assertIsNotNone(self.club.membership)
+        self.assertIsNotNone(self.club.membership.full_members)
+        self.assertIsNotNone(self.club.membership.full_members_quota)
+        self.assertIsNotNone(self.club.membership.associate_members)
+        self.assertIsNotNone(self.club.membership.membership_cost)
 
     def test_not_visible(self):
         self.club = self.eactivities.club(406)  # just hope leosoc never use this
@@ -95,23 +98,19 @@ class ClubTestCase(ClubBaseTestCase):
             self.club.email
         with self.assertRaises(AttributeError):
             self.club.current_profile_entry
-        self.assertIsNotNone(self.club.members)
-        self.assertItemsEqual(self.club.members.keys(), [
-            'full_members', 'full_members_quota',
-            'associate_members', 'membership_cost'
-        ])
+        self.assertIsNotNone(self.club.membership)
+        self.assertIsNotNone(self.club.membership.full_members)
+        self.assertIsNotNone(self.club.membership.full_members_quota)
+        self.assertIsNotNone(self.club.membership.associate_members)
+        self.assertIsNotNone(self.club.membership.membership_cost)
 
 
 class ClubDocumentationTestCase(ClubBaseTestCase):
     def setUp(self):
         super(ClubDocumentationTestCase, self).setUp()
 
-        self.documentation = self.club.documentation()
-
     def test_inventory(self):
-        inventory = self.documentation.inventory()
-
-        inv_list = inventory.list()
+        inv_list = InventoryParser(self.eactivities).fetch_data(test_club_id)
 
         if inv_list is None:
             raise unittest.SkipTest("Inventory exempt - can't test parsing")
@@ -130,9 +129,7 @@ class ClubDocumentationTestCase(ClubBaseTestCase):
         ])
 
     def test_risk_assessment(self):
-        risk_assessment = self.documentation.risk_assessment()
-
-        ra_list = risk_assessment.list()
+        ra_list = RiskAssessmentParser(self.eactivities).fetch_data(test_club_id)
 
         if ra_list is None:
             raise unittest.SkipTest("Risk Assessment exempt - can't test parsing")
@@ -155,14 +152,13 @@ class ClubDocumentationTestCase(ClubBaseTestCase):
         self.assertIn('deadline', ra_list[0]['mitigation']['future'])
 
     def test_key_lists(self):
-        key_lists = self.documentation.key_lists()
+        klp = KeyListsParser(self.eactivities)
+        kls = klp.fetch_data(test_club_id)
 
-        kls = key_lists.list()
-
-        for key_list in kls:
+        for key_list in kls.values():
             self.assertIn('id', key_list)
 
-            key_list_item = key_lists.item(key_list['id'])
+            key_list_item = klp.item(test_club_id, key_list['id'])
             self.assertEqual(key_list_item, key_list)
 
             self.assertItemsEqual(key_list_item.keys(), [
@@ -179,18 +175,19 @@ class ClubFinanceTestCase(ClubBaseTestCase):
         super(ClubFinanceTestCase, self).setUp()
 
         self.f = self.club.finances(2012)
+        self.year = 2012
 
     def test_overview(self):
         fo = self.f.funding_overview
         self.assertGreater(len(fo), 1)
 
     def test_banking_records(self):
-        br = self.f.banking_records()
-        brl = br.list()
+        br = finance_parsers.BankingRecordsParser(self.eactivities)
+        brl = br.list(test_club_id, self.year)
 
         if len(brl) > 0:
             brl_zero = brl[0]
-            brl_zero_item = br.item(brl_zero['id'])
+            brl_zero_item = br.item(test_club_id, self.year, brl_zero['id'])
             self.assertEqual(brl_zero['id'], brl_zero_item['id'])
             self.assertEqual(brl_zero['gross_amount'], brl_zero_item['gross_amount'])
 
@@ -203,15 +200,15 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             ])
             self.assertEqual(len(brl_zero_item['paying_in_slips']), 1)
 
-            br.pdf(brl_zero_item['id'], brl_zero_item['paying_in_slips'][0])
+            br.pdf(test_club_id, self.year, brl_zero_item['id'], brl_zero_item['paying_in_slips'][0])
 
     def test_sales_invoices(self):
-        si = self.f.sales_invoices()
-        sil = si.list()
+        si = finance_parsers.SalesInvoicesParser(self.eactivities)
+        sil = si.list(test_club_id, self.year)
 
         if len(sil) > 0:
             sil_zero = sil[0]
-            sil_zero_item = si.item(sil_zero['id'])
+            sil_zero_item = si.item(test_club_id, self.year, sil_zero['id'])
             self.assertEqual(sil_zero['id'], sil_zero_item['id'])
             self.assertEqual(sil_zero['date'], sil_zero_item['date'])
             self.assertEqual(sil_zero['customer']['name'], sil_zero_item['customer']['name'])
@@ -234,15 +231,15 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             si.item_pdf(sil_zero_item['id'])
 
             if len(sil_zero_item['purchase_order_attachments']) > 1:
-                si.pdf(sil_zero_item['id'], sil_zero_item['purchase_order_attachments'][0])
+                si.pdf(test_club_id, self.year, sil_zero_item['id'], sil_zero_item['purchase_order_attachments'][0])
 
     def test_claims(self):
-        cl = self.f.claims()
-        cll = cl.list()
+        cl = finance_parsers.ClaimsParser(self.eactivities)
+        cll = cl.list(test_club_id, self.year)
 
         if len(cll) > 0:
             cll_zero = cll[0]
-            cll_zero_item = cl.item(cll_zero['id'])
+            cll_zero_item = cl.item(test_club_id, self.year, cll_zero['id'])
             self.assertEqual(cll_zero['id'], cll_zero_item['id'])
             self.assertEqual(cll_zero['person'], cll_zero_item['person'])
             self.assertEqual(cll_zero['status'], cll_zero_item['status'])
@@ -259,15 +256,15 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             ])
 
             if len(cll_zero_item['receipts']) > 1:
-                cl.pdf(cll_zero_item['id'], cll_zero_item['receipts'][0])
+                cl.pdf(test_club_id, self.year, cll_zero_item['id'], cll_zero_item['receipts'][0])
 
     def test_purchase_orders(self):
-        po = self.f.purchase_orders()
-        pol = po.list()
+        po = finance_parsers.PurchaseOrdersParser(self.eactivities)
+        pol = po.list(test_club_id, self.year)
 
         if len(pol) > 0:
             pol_zero = pol[0]
-            pol_zero_item = po.item(pol_zero['id'])
+            pol_zero_item = po.item(test_club_id, self.year, pol_zero['id'])
             self.assertEqual(pol_zero['id'], pol_zero_item['id'])
             self.assertEqual(pol_zero['supplier']['name'], pol_zero['supplier']['name'])
             self.assertEqual(pol_zero['status'], pol_zero_item['status'])
@@ -288,15 +285,15 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             ])
 
             if len(pol_zero_item['invoices']) > 1:
-                po.pdf(pol_zero_item['id'], pol_zero_item['invoices'][0])
+                po.pdf(test_club_id, self.year, pol_zero_item['id'], pol_zero_item['invoices'][0])
 
     def test_transaction_corrections(self):
-        tc = self.f.transaction_corrections()
-        tcl = tc.list()
+        tc = finance_parsers.TransactionCorrectionsParser(self.eactivities)
+        tcl = tc.list(test_club_id, self.year)
 
         if len(tcl) > 0:
             tcl_zero = tcl[0]
-            tcl_zero_item = tc.item(tcl_zero['id'])
+            tcl_zero_item = tc.item(test_club_id, self.year, tcl_zero['id'])
             self.assertEqual(tcl_zero['id'], tcl_zero_item['id'])
             self.assertEqual(tcl_zero['status'], tcl_zero_item['status'])
             self.assertEqual(tcl_zero['gross_amount'], tcl_zero_item['gross_amount'])
@@ -310,12 +307,12 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             ])
 
     def test_internal_charges(self):
-        ic = self.f.internal_charges()
-        icl = ic.list()
+        ic = finance_parsers.InternalChargesParser(self.eactivities)
+        icl = ic.list(test_club_id, self.year)
 
         if len(icl) > 0:
             icl_zero = icl[0]
-            icl_zero_item = ic.item(icl_zero['id'])
+            icl_zero_item = ic.item(test_club_id, self.year, icl_zero['id'])
             self.assertEqual(icl_zero['id'], icl_zero_item['id'])
             self.assertEqual(icl_zero['status'], icl_zero_item['status'])
             self.assertEqual(icl_zero['gross_amount'], icl_zero_item['gross_amount'])
@@ -331,12 +328,12 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             ])
 
     def test_members_funds_redistributions(self):
-        mfr = self.f.members_funds_redistributions()
-        mfrl = mfr.list()
+        mfr = finance_parsers.MembersFundsRedistributionsParser(self.eactivities)
+        mfrl = mfr.list(test_club_id, self.year)
 
         if len(mfrl) > 0:
             mfrl_zero = mfrl[0]
-            mfrl_zero_item = mfr.item(mfrl_zero['id'])
+            mfrl_zero_item = mfr.item(test_club_id, self.year, mfrl_zero['id'])
             self.assertEqual(mfrl_zero['id'], mfrl_zero_item['id'])
             self.assertEqual(mfrl_zero['person'], mfrl_zero_item['person'])
             self.assertEqual(mfrl_zero['status'], mfrl_zero_item['status'])
@@ -353,12 +350,12 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             ])
 
     def test_funding_redistributions(self):
-        fr = self.f.funding_redistributions()
-        frl = fr.list()
+        fr = finance_parsers.FundingRedistributionsParser(self.eactivities)
+        frl = fr.list(test_club_id, self.year)
 
         if len(frl) > 0:
             frl_zero = frl[0]
-            frl_zero_item = fr.item(frl_zero['id'])
+            frl_zero_item = fr.item(test_club_id, self.year, frl_zero['id'])
             self.assertEqual(frl_zero['id'], frl_zero_item['id'])
             self.assertEqual(frl_zero['status'], frl_zero_item['status'])
             self.assertEqual(frl_zero['funding_source'], frl_zero_item['funding_source'])
@@ -381,7 +378,8 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         if test_club_id != 411:
             raise unittest.SkipTest("results stored only for 411")
 
-        self.f = self.club.finances(2012)
+        self.year = 2012
+        self.f = self.club.finances(self.year)
 
     def fetch_sha1(self, thing):
         s = hashlib.sha1()
@@ -405,8 +403,8 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(fo['Harlington (2)'], decimal.Decimal('-13095.89'))
 
     def test_banking_records(self):
-        br = self.f.banking_records()
-        brl = br.list()
+        br = finance_parsers.BankingRecordsParser(self.eactivities)
+        brl = br.list(test_club_id, self.year)
         self.assertEqual(len(brl), 11)
         self.assertItemsEqual([x['id'] for x in brl], [
             u'124830', u'124831', u'124832', u'124833', u'124834', u'124835', u'124836',
@@ -415,14 +413,14 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         br_x = [x['gross_amount'] for x in brl if x['id'] == u'124830'][0]
         self.assertEqual(br_x, decimal.Decimal('606.33'))
 
-        bri = br.item(u'124830')
+        bri = br.item(test_club_id, self.year, u'124830')
         self.assertEqual(bri['date'], datetime.date(2012, 10, 16))
         self.assertEqual(len(bri['transaction_lines']), 5)
-        self.assertEqual(self.fetch_sha1(br.pdf(bri['id'], bri['paying_in_slips'][0])), 'a5ba9d8b9efca6f593d7af5046c9fe7de32c7b09')
+        self.assertEqual(self.fetch_sha1(br.pdf(test_club_id, self.year, bri['id'], bri['paying_in_slips'][0])), 'a5ba9d8b9efca6f593d7af5046c9fe7de32c7b09')
 
     def test_sales_invoices(self):
-        si = self.f.sales_invoices()
-        sil = si.list()
+        si = finance_parsers.SalesInvoicesParser(self.eactivities)
+        sil = si.list(test_club_id, self.year)
         self.assertEqual(len(sil), 1)
         self.assertItemsEqual([x['id'] for x in sil], [u'602067'])
 
@@ -434,7 +432,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(sil_item['gross_amount'], decimal.Decimal('334.72'))
         self.assertEqual(sil_item['status'], 'COMPLETED')
 
-        sii = si.item(u'602067')
+        sii = si.item(test_club_id, self.year, u'602067')
         self.assertEqual(sii['id'], sil_item['id'])
         self.assertEqual(sii['date'], sil_item['date'])
         self.assertEqual(sii['customer']['name'], sil_item['customer']['name'])
@@ -450,12 +448,12 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
 
         self.assertEqual(len(sii['audit_trail']), 2)
         hashed_at = [dict([(a, self.hash_sha1(unicode(b))) for (a, b) in line.items()]) for line in sii['audit_trail']]
-        self.assertEqual(hashed_at[0]['role'], '03f4ee567c46f7db2bbfd8e11ccf20b05d6d0651')
+        self.assertEqual(hashed_at[0]['role'], '70f7b048909aab7189f17304a27c8a23618d772b')
         self.assertEqual(hashed_at[0]['name'], 'fe415757c4183ce3edcac2b560cabcc755b71068')
         self.assertEqual(hashed_at[0]['notes'], '59485474e0259a370fa35b4cbf7b12da5791a4d1')
         self.assertEqual(hashed_at[0]['date'], '40ea7fae3fda0a8cb546490dbe96f027e2b3ce8b')
 
-        self.assertEqual(hashed_at[1]['role'], '46365ea67f172880340db507a17ed059f6ee5163')
+        self.assertEqual(hashed_at[1]['role'], '862826083e8399c6709108c51688ef53ee0b6218')
         self.assertEqual(hashed_at[1]['name'], '6178539ac523e4e9c9bd4ba68906c30c611ab356')
         self.assertEqual(hashed_at[1]['notes'], 'b917a98575e20887318e613d130b74b32ad5f506')
         self.assertEqual(hashed_at[1]['date'], '55e71acc312e6e2ec0167b04aa6f43871d3d9c04')
@@ -472,13 +470,13 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(sii['transaction_lines'][0]['quantity'], 1)
 
         self.assertEqual(
-            self.fetch_sha1(si.pdf(sii['id'], sii['purchase_order_attachments'][0])),
+            self.fetch_sha1(si.pdf(test_club_id, self.year, sii['id'], sii['purchase_order_attachments'][0])),
             'cc9ccb9807694f654aed6ddd590ac404d40ca3e0'
         )
 
     def test_claims(self):
-        cl = self.f.claims()
-        cll = cl.list()
+        cl = finance_parsers.ClaimsParser(self.eactivities)
+        cll = cl.list(test_club_id, self.year)
         self.assertEqual(len(cll), 74)
         self.assertItemsEqual([x['id'] for x in cll], [
             u'5854', u'5884', u'5885', u'5886', u'5942',
@@ -504,7 +502,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(cll_item['payment_date'], datetime.date(2012, 10, 18))
         self.assertEqual(cll_item['gross_amount'], decimal.Decimal('6.75'))
 
-        cli = cl.item(u'5854')
+        cli = cl.item(test_club_id, self.year, u'5854')
         self.assertEqual(cll_item['id'], cli['id'])
         self.assertEqual(self.hash_sha1(cll_item['person']), self.hash_sha1(cli['person']))
         self.assertEqual(cll_item['status'], cli['status'])
@@ -522,24 +520,24 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(cli['transaction_lines'][0]['value']['gross'], decimal.Decimal('6.75'))
 
         hashed_at = [dict([(a, self.hash_sha1(unicode(b))) for (a, b) in line.items()]) for line in cli['audit_trail']]
-        self.assertEqual(hashed_at[0]['role'], '103e0c13b1cb61fe93c695f3c638f9d112f7b171')
+        self.assertEqual(hashed_at[0]['role'], 'fbf371a6a4938e4abcd1702439c70246b407057c')
         self.assertEqual(hashed_at[0]['name'], '0fc809085b837fa907456c23b6c57bcfe4086573')
         self.assertEqual(hashed_at[0]['notes'], 'ed2234b81e1992648dc8e50566bd81e00b87886d')
         self.assertEqual(hashed_at[0]['date'], 'dc94adee62044d2bf6587c1dde8dec80d0c73e4c')
 
-        self.assertEqual(hashed_at[1]['role'], '03f4ee567c46f7db2bbfd8e11ccf20b05d6d0651')
+        self.assertEqual(hashed_at[1]['role'], '70f7b048909aab7189f17304a27c8a23618d772b')
         self.assertEqual(hashed_at[1]['name'], 'fe415757c4183ce3edcac2b560cabcc755b71068')
         self.assertEqual(hashed_at[1]['notes'], '4b8383d6bc4543fec7d27c04c57f05054bb06252')
         self.assertEqual(hashed_at[1]['date'], '26a07a91710859901091512650b1542cda30f7e3')
 
         self.assertEqual(
-            self.fetch_sha1(cl.pdf(cli['id'], cli['receipts'][0])),
+            self.fetch_sha1(cl.pdf(test_club_id, self.year, cli['id'], cli['receipts'][0])),
             '9258149cef4416566134a84fcdbf638e977a4e48'
         )
 
     def test_purchase_orders(self):
-        po = self.f.purchase_orders()
-        pol = po.list()
+        po = finance_parsers.PurchaseOrdersParser(self.eactivities)
+        pol = po.list(test_club_id, self.year)
         self.assertEqual(len(pol), 62)
         self.assertItemsEqual([x['id'] for x in pol], [
             u"5002057", u"5002072", u"5002129", u"5002388", u"5002389",
@@ -567,7 +565,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(pol_item['payment_date'], datetime.date(2012, 10, 2))
         self.assertEqual(pol_item['gross_amount'], decimal.Decimal('120.00'))
 
-        poi = po.item(u'5002057')
+        poi = po.item(test_club_id, self.year, u'5002057')
         self.assertEqual(poi['id'], u'5002057')
         self.assertEqual(poi['supplier']['name'], pol_item['supplier']['name'])
         self.assertEqual(self.hash_sha1(poi['supplier']['address']), 'a0b01b7d9a070a14eac203b14c973e90a6cce307')
@@ -577,12 +575,12 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(poi['pro_forma'], pol_item['pro_forma'])
 
         hashed_at = [dict([(a, self.hash_sha1(unicode(b))) for (a, b) in line.items()]) for line in poi['audit_trail']]
-        self.assertEqual(hashed_at[0]['role'], '55f2770149eabaaa58560bc7a85b75c17dae1422')
+        self.assertEqual(hashed_at[0]['role'], 'e65ba88cb325cece120babdb95d28f0b1e1db9f5')
         self.assertEqual(hashed_at[0]['name'], 'fe415757c4183ce3edcac2b560cabcc755b71068')
         self.assertEqual(hashed_at[0]['notes'], '303b0d773f8e099e0d84586784d2ba547d05a792')
         self.assertEqual(hashed_at[0]['date'], 'ef6cbbb3b36cbb765b2a2cc6a56f6fcd6745b6e8')
 
-        self.assertEqual(hashed_at[1]['role'], '6994b2e3c57c0f6689a2f4a580e8a7a11de976f2')
+        self.assertEqual(hashed_at[1]['role'], '55cf5ee221a461c8b3db07cb613622ac61403013')
         self.assertEqual(hashed_at[1]['name'], '33c3bf7adc0ec7a2cbc15e54dc7f138bc90aac14')
         self.assertEqual(hashed_at[1]['notes'], '5987c7f90f0229c88d4d66b1ca0107097176987e')
         self.assertEqual(hashed_at[1]['date'], 'ef6cbbb3b36cbb765b2a2cc6a56f6fcd6745b6e8')
@@ -606,8 +604,8 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(poi['transaction_lines'][0]['quantity']['ordered'], 1.0)
 
     def test_transaction_corrections(self):
-        tc = self.f.transaction_corrections()
-        tcl = tc.list()
+        tc = finance_parsers.TransactionCorrectionsParser(self.eactivities)
+        tcl = tc.list(test_club_id, self.year)
 
         self.assertEqual(len(tcl), 10)
         self.assertItemsEqual([x['id'] for x in tcl], [
@@ -620,7 +618,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(tcl_item['status'], u'COMPLETED')
         self.assertEqual(tcl_item['gross_amount'], decimal.Decimal('495.33'))
 
-        tci = tc.item(tcl_item['id'])
+        tci = tc.item(test_club_id, self.year, tcl_item['id'])
         self.assertEqual(tci['id'], tcl_item['id'])
         self.assertEqual(tci['status'], tcl_item['status'])
         self.assertEqual(tci['gross_amount'], tcl_item['gross_amount'])
@@ -678,7 +676,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(tci['to_transaction_lines'], x)
 
         self.assertEqual(len(tci['audit_trail']), 2)
-        self.assertEqual(self.hash_sha1(tci['audit_trail'][0]['role']), '03f4ee567c46f7db2bbfd8e11ccf20b05d6d0651')
+        self.assertEqual(self.hash_sha1(tci['audit_trail'][0]['role']), '70f7b048909aab7189f17304a27c8a23618d772b')
         self.assertEqual(self.hash_sha1(tci['audit_trail'][0]['name']), 'fe415757c4183ce3edcac2b560cabcc755b71068')
         self.assertEqual(self.hash_sha1(tci['audit_trail'][0]['notes']), '65bd5f5a07b1bc471591620888b5beec6ae47b80')
         self.assertEqual(self.hash_sha1(tci['audit_trail'][0]['date']), '59f8d084dc869f265a4910748c7115989312dce3')
@@ -689,12 +687,12 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(self.hash_sha1(tci['audit_trail'][1]['date']), 'dc0a40c2ece50e2453573393367982418b5507a6')
 
     def test_internal_charges(self):
-        ic = self.f.internal_charges()
-        icl = ic.list()
+        ic = finance_parsers.InternalChargesParser(self.eactivities)
+        icl = ic.list(test_club_id, self.year)
 
         self.assertEqual(len(icl), 21)
-        charged_icl = [x for x in icl if x['charged_committee']['id'] == u'411']
-        receiving_icl = [x for x in icl if x['receiving_committee']['id'] == u'411']
+        charged_icl = [x for x in icl if unicode(x['charged_committee']['id']) == u'411']
+        receiving_icl = [x for x in icl if unicode(x['receiving_committee']['id']) == u'411']
         self.assertEqual(len(charged_icl), 7)
         self.assertEqual(len(receiving_icl), 14)
         self.assertItemsEqual([x['id'] for x in icl], [
@@ -723,7 +721,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
 
         same_attrs = ['id', 'receiving_committee', 'charged_committee', 'status', 'gross_amount']
 
-        charged_ici = ic.item(charged_icl_item['id'])
+        charged_ici = ic.item(test_club_id, self.year, charged_icl_item['id'])
         self.assertEqual([charged_ici[y] for y in same_attrs], [charged_icl_item[y] for y in same_attrs])
 
         self.assertEqual(len(charged_ici['transaction_lines']), 1)
@@ -739,24 +737,24 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(charged_ici['transaction_lines'], x)
 
         self.assertEqual(len(charged_ici['audit_trail']), 2)
-        self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][0]['role']), '9feb6b46ec620545a20f2c4f4a9f4d069a70eb68')
+        self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][0]['role']), 'b97a2e22f06102a21070b943dde8fdbc306ba5cd')
         self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][0]['name']), 'e89487aa73a04416e733ce875c382b89dcc3d7d5')
         self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][0]['notes']), 'e3cb3bc1947d2f6d9c039b1dfe749897b305f72e')
         self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][0]['date']), '23bdced2eb7bff7308cdc50a300d41391aa627af')
 
-        self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][1]['role']), '6994b2e3c57c0f6689a2f4a580e8a7a11de976f2')
+        self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][1]['role']), '55cf5ee221a461c8b3db07cb613622ac61403013')
         self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][1]['name']), '33c3bf7adc0ec7a2cbc15e54dc7f138bc90aac14')
         self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][1]['notes']), '1e9ac3b6c2e52729e9b61567eb3c688ecb466cd2')
         self.assertEqual(self.hash_sha1(charged_ici['audit_trail'][1]['date']), 'e2349e9004bddfe3fd79ce781ad9ccf1d95795a2')
 
-        receiving_ici = ic.item(receiving_icl_item['id'])
+        receiving_ici = ic.item(test_club_id, self.year, receiving_icl_item['id'])
         self.assertEqual([receiving_ici[y] for y in same_attrs], [receiving_icl_item[y] for y in same_attrs])
 
         # let's just assume that parsing receiving ICs works - they're basically identical anyway
 
     def test_members_funds_redistributions(self):
-        mf = self.f.members_funds_redistributions()
-        mfl = mf.list()
+        mf = finance_parsers.MembersFundsRedistributionsParser(self.eactivities)
+        mfl = mf.list(test_club_id, self.year)
         self.assertEqual(len(mfl), 4)
 
         mfl_item = mfl[-1]
@@ -766,7 +764,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(mfl_item['funding_source'], {'id': u'1', 'name': u'SGI'})
         self.assertEqual(mfl_item['gross_amount'], decimal.Decimal('97.05'))
 
-        mfi = mf.item(mfl_item['id'])
+        mfi = mf.item(test_club_id, self.year, mfl_item['id'])
         attrs = ['id', 'status', 'funding_source', 'gross_amount']
         self.assertEqual([mfi[x] for x in attrs], [mfl_item[x] for x in attrs])
         self.assertEqual(self.hash_sha1(mfi['person']), self.hash_sha1(mfl_item['person']))
@@ -801,12 +799,12 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(mfi['to_transaction_lines'], x)
 
         self.assertEqual(len(mfi['audit_trail']), 4)
-        self.assertEqual(self.hash_sha1(mfi['audit_trail'][0]['role']), '03f4ee567c46f7db2bbfd8e11ccf20b05d6d0651')
+        self.assertEqual(self.hash_sha1(mfi['audit_trail'][0]['role']), '70f7b048909aab7189f17304a27c8a23618d772b')
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][0]['name']), 'fe415757c4183ce3edcac2b560cabcc755b71068')
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][0]['notes']), 'da72a37e76622b97097edf51005241526d331e98')
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][0]['date']), '770113b110933276e9008294f3fbf61cd6e54fce')
 
-        self.assertEqual(self.hash_sha1(mfi['audit_trail'][1]['role']), '6994b2e3c57c0f6689a2f4a580e8a7a11de976f2')
+        self.assertEqual(self.hash_sha1(mfi['audit_trail'][1]['role']), '55cf5ee221a461c8b3db07cb613622ac61403013')
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][1]['name']), '33c3bf7adc0ec7a2cbc15e54dc7f138bc90aac14')
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][1]['notes']), 'ff9d7c269b39a38fd63840d6828282086e986a2f')
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][1]['date']), '770113b110933276e9008294f3fbf61cd6e54fce')
@@ -822,8 +820,8 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][3]['date']), '8613fbaf49fe1d1f92e7e2553dee79ca33f0dc36')
 
     def test_funding_redistributions(self):
-        fr = self.f.funding_redistributions()
-        frl = fr.list()
+        fr = finance_parsers.FundingRedistributionsParser(self.eactivities)
+        frl = fr.list(test_club_id, self.year)
         self.assertEqual(len(frl), 1)
 
         frl_item = frl[0]
@@ -832,7 +830,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(frl_item['funding_source'], {'id': u'1', 'name': u'SGI'})
         self.assertEqual(frl_item['gross_amount'], decimal.Decimal('610.00'))
 
-        fri = fr.item(frl_item['id'])
+        fri = fr.item(test_club_id, self.year, frl_item['id'])
         attrs = ['id', 'status', 'funding_source', 'gross_amount']
         self.assertEqual([fri[x] for x in attrs], [frl_item[x] for x in attrs])
 
@@ -865,12 +863,12 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(fri['to_transaction_lines'], x)
 
         self.assertEqual(len(fri['audit_trail']), 3)
-        self.assertEqual(self.hash_sha1(fri['audit_trail'][0]['role']), '03f4ee567c46f7db2bbfd8e11ccf20b05d6d0651')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][0]['role']), '70f7b048909aab7189f17304a27c8a23618d772b')
         self.assertEqual(self.hash_sha1(fri['audit_trail'][0]['name']), 'fe415757c4183ce3edcac2b560cabcc755b71068')
         self.assertEqual(self.hash_sha1(fri['audit_trail'][0]['notes']), '83ab746df7203f0f7cb1920913dd42d3959910ce')
         self.assertEqual(self.hash_sha1(fri['audit_trail'][0]['date']), '770113b110933276e9008294f3fbf61cd6e54fce')
 
-        self.assertEqual(self.hash_sha1(fri['audit_trail'][1]['role']), '6994b2e3c57c0f6689a2f4a580e8a7a11de976f2')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][1]['role']), '55cf5ee221a461c8b3db07cb613622ac61403013')
         self.assertEqual(self.hash_sha1(fri['audit_trail'][1]['name']), '33c3bf7adc0ec7a2cbc15e54dc7f138bc90aac14')
         self.assertEqual(self.hash_sha1(fri['audit_trail'][1]['notes']), '17832243bf859adb32ed4a1e7ed051ab4ecba9a3')
         self.assertEqual(self.hash_sha1(fri['audit_trail'][1]['date']), '770113b110933276e9008294f3fbf61cd6e54fce')

@@ -6,7 +6,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 
-from . import exceptions, clubs, utils
+from . import exceptions, models, utils
 
 SESSION_COOKIE_NAME = 'ICU_eActivities'
 BASE_PATH = 'https://eactivities.union.ic.ac.uk'
@@ -23,6 +23,7 @@ ESSL = os.getenv('EACTIVITIES_SSL_CERTIFICATE')
 class EActivities(object):
     def __init__(self, reqsession=None, session=None, credentials=None):
         self.session = reqsession or requests.session()
+        self.current_page_id = 1
 
         if ESSL:
             self.session.verify = ESSL
@@ -138,7 +139,7 @@ class EActivities(object):
 
         start_start = resp.text.find('start(')
         start_end = resp.text.find(',', start_start)
-        page_id = int(resp.text[start_start+len('start('):start_end])
+        page_id = int(resp.text[start_start + len('start('):start_end])
 
         self.current_page_id = page_id
 
@@ -169,7 +170,7 @@ class EActivities(object):
             'p', class_='otherroles'
         ):
             role_id = role_option.span.attrs['onclick']
-            role_id = int(role_id[role_id.find("'")+1:role_id.rfind("'")])
+            role_id = int(role_id[role_id.find("'") + 1:role_id.rfind("'")])
             role_name = role_option.span.get_text()
             position, committee = utils.split_role(role_name)
             roles[role_id] = {
@@ -182,7 +183,7 @@ class EActivities(object):
         roles_soup, _ = self.ajax_handler({'ajax': 'roles', 'navigate': '1'})
         for role_menuopt in roles_soup.data.menu.find_all("menuopt"):
             role_id = role_menuopt.method.get_text()
-            role_id = int(role_id[role_id.find("'")+1:role_id.rfind("'")])
+            role_id = int(role_id[role_id.find("'") + 1:role_id.rfind("'")])
             role_name = role_menuopt.label.get_text()
             position, committee = utils.split_role(role_name)
             roles[role_id] = {
@@ -213,4 +214,4 @@ class EActivities(object):
         })
 
     def club(self, club_id):
-        return clubs.Club(self, club_id)
+        return models.Club(eactivities=self, data={'id': club_id})

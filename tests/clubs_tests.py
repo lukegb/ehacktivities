@@ -4,7 +4,7 @@ import decimal
 from mock import MagicMock
 from bs4 import BeautifulSoup
 
-from eactivities import clubs
+from eactivities.models import Club
 from . import xml
 
 
@@ -21,7 +21,7 @@ class TestClub(unittest.TestCase):
             '/admin/csp/details/211': xml.admin_csp_details_211,
         }
 
-        self.club = clubs.Club(self.eactivities, 211)
+        self.club = Club(eactivities=self.eactivities, data={'id': 211})
 
     def boring_sideeffect(self, url):
         return (
@@ -31,30 +31,29 @@ class TestClub(unittest.TestCase):
         )
 
     def test_init(self):
-        self.assertEquals(self.club.eactivities, self.eactivities)
-        self.assertEquals(self.club.id, u'211')
+        self.assertEquals(self.club.id, 211)
 
     def test_getattr(self):
-        self.eactivities.ajax_handler.return_value = BeautifulSoup(
+        self.eactivities.ajax_handler.return_value = (BeautifulSoup(
             xml.admin_csp_details_211_tab395
-        ), None
+        ), None)
         with self.assertRaises(AttributeError):
             self.club.lol
-        self.eactivities.ajax_handler.assert_called_with(
-            {'navigate': '395', 'ajax': 'activatetabs'}
-        )
         self.assertEquals(self.club.name, "RCC FERRET FANCIERS")
         self.assertTrue(self.club.active)
         self.assertEquals(self.club.website, "http://www.union.ic.ac.uk/rcc/ffanciers")
         self.assertEquals(self.club.email, "ffanciers@imperial.ac.uk")
-        self.assertEquals(self.club.current_profile_entry, [
-            u'A short description.',
-            u'A long description.'
-        ])
-        self.assertEquals(self.club.members['full_members'], 342)
-        self.assertEquals(self.club.members['full_members_quota'], 120)
-        self.assertEquals(self.club.members['membership_cost'], decimal.Decimal('5.00'))
-        self.assertEquals(self.club.members['associate_members'], 11)
+        self.assertEquals(self.club.current_profile_entry, {
+            'short': u'A short description.',
+            'long': u'A long description.'
+        })
+        self.assertEquals(self.club.membership.full_members, 342)
+        self.assertEquals(self.club.membership.full_members_quota, 120)
+        self.assertEquals(self.club.membership.membership_cost, decimal.Decimal('5.00'))
+        self.assertEquals(self.club.membership.associate_members, 11)
+        self.eactivities.ajax_handler.assert_called_with(
+            {'navigate': '395', 'ajax': 'activatetabs'}
+        )
 
     def test_getattr_noaccess(self):
         self.response['/admin/csp/details/211'] = xml.norecords
@@ -69,7 +68,7 @@ class TestClub(unittest.TestCase):
         with self.assertRaises(AttributeError):
             self.club.current_profile_entry
 
-        self.assertEquals(self.club.members['full_members'], 342)
-        self.assertEquals(self.club.members['full_members_quota'], 120)
-        self.assertEquals(self.club.members['membership_cost'], decimal.Decimal('5.00'))
-        self.assertEquals(self.club.members['associate_members'], 11)
+        self.assertEquals(self.club.membership.full_members, 342)
+        self.assertEquals(self.club.membership.full_members_quota, 120)
+        self.assertEquals(self.club.membership.membership_cost, decimal.Decimal('5.00'))
+        self.assertEquals(self.club.membership.associate_members, 11)

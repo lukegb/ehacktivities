@@ -4,7 +4,7 @@ import decimal
 from mock import MagicMock
 from bs4 import BeautifulSoup
 
-from eactivities import club_finances
+from eactivities.models.finances import Finances
 from . import xml
 
 
@@ -14,15 +14,9 @@ class TestClubFinances(unittest.TestCase):
         self.club = MagicMock()
         self.club.eactivities = self.eactivities
         self.club.id = 211
-        self.club_finances = club_finances.ClubFinances(self.club, 2013)
-
-    def test_init(self):
-        self.assertEquals(self.club_finances.club, self.club)
-        self.assertEquals(self.club_finances.year, 2013)
+        self.club_finances = Finances(eactivities=self.eactivities, data={'club_id': self.club, 'year': 2013}, parent=self.club)
 
     def test_getattr_this_year(self):
-        self.assertFalse(self.club_finances.loaded_data)
-
         self.eactivities.load_and_start.return_value = BeautifulSoup(
             xml.finance_transactions_211
         ), None
@@ -37,11 +31,7 @@ class TestClubFinances(unittest.TestCase):
             }
         )
 
-        self.assertTrue(self.club_finances.loaded_data)
-
     def test_getattr_last_year(self):
-        self.assertFalse(self.club_finances.loaded_data)
-
         def change_it(soup, tab_id):
             tab_soup = BeautifulSoup(xml.finance_transactions_211_2010)
             encid = tab_soup.data.encid.get_text()
@@ -50,7 +40,7 @@ class TestClubFinances(unittest.TestCase):
             soup_enc.append(tab_soup.data)
             soup_enc.data.unwrap()
 
-        self.club_finances.year = 2010
+        self.club_finances = Finances(eactivities=self.eactivities, data={'club_id': self.club, 'year': 2010}, parent=self.club)
         self.eactivities.load_and_start.return_value = BeautifulSoup(
             xml.finance_transactions_211
         ), None
@@ -63,5 +53,3 @@ class TestClubFinances(unittest.TestCase):
                 u'SGI (1)': decimal.Decimal('-1839.72')
             }
         )
-
-        self.assertTrue(self.club_finances.loaded_data)

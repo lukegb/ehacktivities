@@ -227,3 +227,7 @@ class DoesNotExist(EActivitiesException):
 
 class EActivitiesHasChanged(EActivitiesException):
     pass
+
+
+class ThisShouldNeverHappen(EActivitiesException):
+    pass
