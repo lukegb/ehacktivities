@@ -352,6 +352,27 @@ class ClubFinanceTestCase(ClubBaseTestCase):
                 'to_transaction_lines'
             ])
 
+    def test_funding_redistributions(self):
+        fr = self.f.funding_redistributions()
+        frl = fr.list()
+
+        if len(frl) > 0:
+            frl_zero = frl[0]
+            frl_zero_item = fr.item(frl_zero['id'])
+            self.assertEqual(frl_zero['id'], frl_zero_item['id'])
+            self.assertEqual(frl_zero['status'], frl_zero_item['status'])
+            self.assertEqual(frl_zero['funding_source'], frl_zero_item['funding_source'])
+            self.assertEqual(frl_zero['gross_amount'], frl_zero_item['gross_amount'])
+
+            self.assertItemsEqual(frl_zero.keys(), [
+                'id', 'status', 'funding_source', 'gross_amount'
+            ])
+            self.assertItemsEqual(frl_zero_item.keys(), [
+                'id', 'funding_source', 'gross_amount',
+                'status', 'audit_trail', 'next_authorisers', 'from_transaction_lines',
+                'to_transaction_lines'
+            ])
+
 
 class ClubFinanceCinemaTestCase(ClubBaseTestCase):
     def setUp(self):
@@ -799,3 +820,62 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][3]['name']), 'e64b0c874b103f39164ca6b627a4ab354b9824bf')
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][3]['notes']), '35aa85641b9625e10d8bd8644c570ee869514059')
         self.assertEqual(self.hash_sha1(mfi['audit_trail'][3]['date']), '8613fbaf49fe1d1f92e7e2553dee79ca33f0dc36')
+
+    def test_funding_redistributions(self):
+        fr = self.f.funding_redistributions()
+        frl = fr.list()
+        self.assertEqual(len(frl), 1)
+
+        frl_item = frl[0]
+        self.assertEqual(frl_item['id'], u'560')
+        self.assertEqual(frl_item['status'], u'COMPLETED')
+        self.assertEqual(frl_item['funding_source'], {'id': u'1', 'name': u'SGI'})
+        self.assertEqual(frl_item['gross_amount'], decimal.Decimal('610.00'))
+
+        fri = fr.item(frl_item['id'])
+        attrs = ['id', 'status', 'funding_source', 'gross_amount']
+        self.assertEqual([fri[x] for x in attrs], [frl_item[x] for x in attrs])
+
+        x = [
+            {
+                'description': u'Zero cancelled POs from last year',
+                'account': {
+                    'id': u'725', 'name': u'Copyright & Royalties'
+                },
+                'activity': {
+                    'id': u'52', 'name': u'Winter All-Nighter'
+                },
+                'value': {'gross': decimal.Decimal('610.00')}
+            }
+        ]
+        self.assertEqual(fri['from_transaction_lines'], x)
+
+        x = [
+            {
+                'description': u"This has nothing to do with Acts - it's just a place to dump surplus from copyright last year.",
+                'account': {
+                    'id': u'600', 'name': u'Acts'
+                },
+                'activity': {
+                    'id': u'00', 'name': u'General'
+                },
+                'value': {'gross': decimal.Decimal('610.00')}
+            }
+        ]
+        self.assertEqual(fri['to_transaction_lines'], x)
+
+        self.assertEqual(len(fri['audit_trail']), 3)
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][0]['role']), '03f4ee567c46f7db2bbfd8e11ccf20b05d6d0651')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][0]['name']), 'fe415757c4183ce3edcac2b560cabcc755b71068')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][0]['notes']), '83ab746df7203f0f7cb1920913dd42d3959910ce')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][0]['date']), '770113b110933276e9008294f3fbf61cd6e54fce')
+
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][1]['role']), '6994b2e3c57c0f6689a2f4a580e8a7a11de976f2')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][1]['name']), '33c3bf7adc0ec7a2cbc15e54dc7f138bc90aac14')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][1]['notes']), '17832243bf859adb32ed4a1e7ed051ab4ecba9a3')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][1]['date']), '770113b110933276e9008294f3fbf61cd6e54fce')
+
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][2]['role']), 'e2cf8b0754d2be61073416142f53a7cde5669bfc')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][2]['name']), 'e77601345ce74019c1f504b4732e973645a2ed08')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][2]['notes']), '017af4fcc9114597726ba9fbcf7f9bc94f4e5d60')
+        self.assertEqual(self.hash_sha1(fri['audit_trail'][2]['date']), '8613fbaf49fe1d1f92e7e2553dee79ca33f0dc36')
