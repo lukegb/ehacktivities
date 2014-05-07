@@ -247,6 +247,10 @@ class LazyDictFromArrayModel(LazyDictModel):
     _dictish = OrderedDict
 
     def load_data(self, data):
+        if data is self.LAZY_FICTITIOUS_DATA:
+            # See __init__ comment
+            return
+
         new_data = self._dictish([(v['id'], v) for v in data])
         super(LazyDictFromArrayModel, self).load_data(new_data)
 
