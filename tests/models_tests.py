@@ -117,6 +117,7 @@ class DictModelTestCase(unittest.TestCase):
         for k, v in d.items():
             for ik, iv in v.items():
                 self.assertEquals(getattr(m[k], ik), iv)
+            self.assertEquals(m[k].dump(), v)
 
 
 class ArrayModelTestCase(unittest.TestCase):
@@ -135,6 +136,7 @@ class ArrayModelTestCase(unittest.TestCase):
         for i in range(len(d)):
             for k, v in d[i].items():
                 self.assertEquals(getattr(m[i], k), v)
+            self.assertEquals(m[i].dump(), d[i])
 
 
 class LazyModelTestCase(unittest.TestCase):
@@ -146,6 +148,8 @@ class LazyModelTestCase(unittest.TestCase):
         self.assertEqual(m.mno, d['mno'])
         self.assertEqual(m.ghi, d['ghi'])
         self.assertEqual(m.xyz.xyz, d['xyz']['xyz'])
+
+        self.assertEquals(m.dump(), AlwaysReturnsDictParser.data)
 
     def test_no_data(self):
         m = TestLazyModel(eactivities=None, parent=None, data={})
@@ -171,6 +175,8 @@ class LazyDictModelTestCase(unittest.TestCase):
         with self.assertRaises(AttributeError):
             m['abc'].ghi
 
+        self.assertEquals(m.dump(), AlwaysReturnsDictParser.data)
+
 
 class LazyDictFromArrayModelTestCase(unittest.TestCase):
     def test_dict_model(self):
@@ -185,3 +191,5 @@ class LazyDictFromArrayModelTestCase(unittest.TestCase):
             m['ppp']
         with self.assertRaises(AttributeError):
             m['abc'].ghi
+
+        self.assertEquals(m.dump(), AlwaysReturnsDictParser.data.values())

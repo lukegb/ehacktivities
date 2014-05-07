@@ -25,18 +25,22 @@ class BaseModel(object):
         self._parent = parent
         self._eactivities = eactivities
 
-        self.load_data(data)
+        self.load(data)
 
     class DoesNotExist(exceptions.DoesNotExist):
         pass
 
 
 class Model(BaseModel):
-    def load_data(self, data):
+    def load(self, data):
         for k, v in data.iteritems():
             if k in self._submodels:
                 v = self._submodels[k](eactivities=self._eactivities, data=v, parent=self)
             setattr(self, k, v)
+        self._data.update(**data)
+
+    def dump(self):
+        return self._data
 
 
 class CollectionModelMixin(object):
@@ -79,9 +83,11 @@ class ArrayModel(CollectionModelMixin, BaseModel):
 
         super(ArrayModel, self).__init__(*args, **kwargs)
 
-    def load_data(self, data):
-        print "loading data", data
+    def load(self, data):
         self._inner = [self._submodel(eactivities=self._eactivities, data=x, parent=self) for x in data]
+
+    def dump(self):
+        return [x.dump() for x in self._inner]
 
 
 class DictModel(CollectionModelMixin, BaseModel):
@@ -93,8 +99,11 @@ class DictModel(CollectionModelMixin, BaseModel):
 
         super(DictModel, self).__init__(*args, **kwargs)
 
-    def load_data(self, data):
+    def load(self, data):
         self._inner = self._dictish([(k, self._submodel(eactivities=self._eactivities, data=v, parent=self)) for k, v in data.iteritems()])
+
+    def dump(self):
+        return self._dictish([(k, v.dump()) for (k, v) in self._inner.iteritems()])
 
     def items(self):
         return self._inner.items()
@@ -116,7 +125,7 @@ class LazyModelMixin(object):
         data = llp.fetch_data(**self._data)
         if data is None:
             raise self.DoesNotExist()
-        self.load_data(data)
+        self.load(data)
         self._lazy_loaded = True
         return data
 
@@ -148,15 +157,19 @@ class LazyCollectionModelMixin(CollectionModelMixin):
         self._lazy_load_count = 0
         self._lazy_loader_parser_instance = self._lazy_loader_parser(self._eactivities)
 
-    def load_data(self, data):
+    def load(self, data):
         if data is self.LAZY_FICTITIOUS_DATA:
             # See __init__ comment
             return
 
-        super(LazyCollectionModelMixin, self).load_data(data)
+        super(LazyCollectionModelMixin, self).load(data)
 
         for k, v in self._inner.iteritems():
             v._data.update(self._lazy_collection_data)
+
+    @on_access_do_lazy_load
+    def dump(self):
+        return super(LazyCollectionModelMixin, self).dump()
 
     def perform_full_lazy_load(self):
         if self._lazy_loaded:
@@ -165,7 +178,7 @@ class LazyCollectionModelMixin(CollectionModelMixin):
         data = self._lazy_loader_parser_instance.fetch_data(**self._lazy_collection_data)
         if data is None:
             raise self.DoesNotExist()
-        self.load_data(data)
+        self.load(data)
         self._lazy_loaded = True
         return data
 
@@ -246,13 +259,16 @@ class LazyDictFromArrayModel(LazyDictModel):
 
     _dictish = OrderedDict
 
-    def load_data(self, data):
+    def load(self, data):
         if data is self.LAZY_FICTITIOUS_DATA:
             # See __init__ comment
             return
 
         new_data = self._dictish([(v['id'], v) for v in data])
-        super(LazyDictFromArrayModel, self).load_data(new_data)
+        super(LazyDictFromArrayModel, self).load(new_data)
+
+    def dump(self):
+        return [x.dump() for x in self._inner.values()]
 
 
 # LazyArrayModel is a lie
