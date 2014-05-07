@@ -40,9 +40,6 @@ class Model(BaseModel):
 
 
 class CollectionModelMixin(object):
-    def __init__(self, data, *args, **kwargs):
-        super(CollectionModelMixin, self).__init__(data={}, *args, **kwargs)
-
     def __len__(self):
         return len(self._inner)
 
@@ -83,6 +80,7 @@ class ArrayModel(CollectionModelMixin, BaseModel):
         super(ArrayModel, self).__init__(*args, **kwargs)
 
     def load_data(self, data):
+        print "loading data", data
         self._inner = [self._submodel(eactivities=self._eactivities, data=x, parent=self) for x in data]
 
 
