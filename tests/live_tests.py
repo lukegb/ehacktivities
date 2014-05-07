@@ -416,7 +416,10 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         bri = br.item(test_club_id, self.year, u'124830')
         self.assertEqual(bri['date'], datetime.date(2012, 10, 16))
         self.assertEqual(len(bri['transaction_lines']), 5)
-        self.assertEqual(self.fetch_sha1(br.pdf(test_club_id, self.year, bri['id'], bri['paying_in_slips'][0])), 'a5ba9d8b9efca6f593d7af5046c9fe7de32c7b09')
+        self.assertEqual(
+            self.fetch_sha1(br.pdf(test_club_id, self.year, bri['id'], bri['paying_in_slips'][0])),
+            'a5ba9d8b9efca6f593d7af5046c9fe7de32c7b09'
+        )
 
     def test_sales_invoices(self):
         si = finance_parsers.SalesInvoicesParser(self.eactivities)

@@ -1,5 +1,4 @@
 from . import Model, LazyModelMixin, LazyDictFromArrayModel
-#from .. import utils
 from eactivities.parsers.finances import FinancesParser, BankingRecordsParser, SalesInvoicesParser, ClaimsParser, PurchaseOrdersParser, \
     TransactionCorrectionsParser, InternalChargesParser, MembersFundsRedistributionsParser, FundingRedistributionsParser
 
