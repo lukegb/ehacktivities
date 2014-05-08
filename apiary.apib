@@ -20,12 +20,12 @@ This specification must be implemented in a sane fashion, where sane is defined 
 That is to say; implementations must follow the spirit (in addition to the letter) of the implementation. Any dichotomy thus introduced
 is to be resolved by discussion amongst the authors.
 
-An HTTP 401 will be returned to all clients not sending an appropriate 'Authorization: token' header, unless
+An HTTP 401 will be returned to all clients not sending an appropriate 'Authorization: Token' header, unless
 the request is directed to /session under the POST method.
 
-'Authorization: token' headers should be sent as follows:
+'Authorization: Token' headers should be sent as follows:
 
-'Authorization: token [token]', where [token] is that returned from the /session endpoint.
+'Authorization: Token [token]', where [token] is that returned from the /session endpoint.
 
 Various financial documents have "status" fields (e.g. POs, claims). They have the following possibilities:
 
