@@ -20,12 +20,12 @@ This specification must be implemented in a sane fashion, where sane is defined 
 That is to say; implementations must follow the spirit (in addition to the letter) of the implementation. Any dichotomy thus introduced
 is to be resolved by discussion amongst the authors.
 
-An HTTP 401 will be returned to all clients not sending an appropriate 'Authorization: jwt' header, unless
+An HTTP 401 will be returned to all clients not sending an appropriate 'Authorization: token' header, unless
 the request is directed to /session under the POST method.
 
-'Authorization: jwt' headers should be sent as follows:
+'Authorization: token' headers should be sent as follows:
 
-'Authorization: jwt token=[jwt-token]', where [jwt-token] is that returned from the /session endpoint.
+'Authorization: token [token]', where [token] is that returned from the /session endpoint.
 
 Various financial documents have "status" fields (e.g. POs, claims). They have the following possibilities:
 
@@ -63,9 +63,9 @@ the data is requested, eHacktivities will return `410 Gone`.
 # Group Sessions
 Resource for creating and destroying sessions.
 
-## JWT Response
+## Token Response
 
-        { "jwt": "xxxxxxxxxxxx", "expires": "2014-01-02T15:33:23" }
+        { "token": "xxxxxxxxxxxx", "expires": "2014-01-02T15:33:23" }
 
 ## Session [/session]
 ### Get details of your session [GET]
@@ -83,7 +83,7 @@ result in a 403.
         
 + Response 201 (application/json)
 
-        [JWT Response][]
+        [Token Response][]
 
 ### Renew session [POST]
 
@@ -91,11 +91,11 @@ This request renews an extant session.
 
 + Request (application/json)
 
-        { "jwt": "xxxxxxxxxxxx" }
+        { "token": "xxxxxxxxxxxx" }
 
 + Response 201 (application/json)
 
-        [JWT Response][]
+        [Token Response][]
 
 ### Destroy your session [DELETE]
 + Response 204
