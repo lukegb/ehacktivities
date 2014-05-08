@@ -4,13 +4,15 @@ from eactivities.parsers.documentation import InventoryParser, KeyListsParser, R
 
 class Documentation(Model):
     def _spawn(self, model_cls, parser_cls):
+        kwargs = {
+            'club_id': self._data['club_id']
+        }
         return model_cls(
             eactivities=self._eactivities,
             parent=self,
-            data=parser_cls.fetch(
-                eactivities=self._eactivities,
-                club_id=self._data['club_id']
-            )
+            parser=parser_cls,
+            data=None,
+            arguments=kwargs
         )
 
     def inventory(self):

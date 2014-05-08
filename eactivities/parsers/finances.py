@@ -123,9 +123,9 @@ class FinancialDocumentationParser(BaseParser):
         # now return the soup representing the form enclosure
         return mode_tab, document_soup
 
-    def fetch_data(self, club_id, year, id=None, **kwargs):
-        if id is not None:
-            return self.item(club_id, year, id)
+    def fetch_data(self, club_id, year, item_id=None, **kwargs):
+        if item_id is not None:
+            return self.item(club_id, year, item_id)
         return self.list(club_id, year)
 
     def list(self, club_id, year):
@@ -175,14 +175,6 @@ class FinancialDocumentationParser(BaseParser):
                 row_item
             )
 
-    def image(self, club_id, year, item_id, image_id):
-        self.item(club_id, year, item_id)
-        return self.eactivities.file_handler(image_id)
-
-    def pdf(self, club_id, year, item_id, image_id):
-        self.item(club_id, year, item_id)
-        return self.eactivities.file_handler(image_id, override=True)
-
     def parse_audit_trail(self, item_soup):
         audit_trail_label_soup = item_soup.find("label", text='AUDIT TRAIL')
         audit_table_soup = audit_trail_label_soup.find_next_sibling('infotable')
@@ -227,29 +219,6 @@ class FinancialDocumentationParser(BaseParser):
             authorisers.append(authoriser)
 
         return authorisers
-
-    def parse_field(self, soup, alias, type='text', cell=False):
-        dt = {
-            'text': unicode,
-            'date': utils.parse_date,
-            'money': utils.format_price,
-            'number': float,
-            'bit': lambda x: x.strip() == '1',
-            'vat': utils.format_vat,
-            'account': utils.split_account_bracket,
-            'status': lambda x: x.replace(' ', '_').upper()
-        }
-
-        x = soup.find(
-            "infofield" if not cell else "infotablecell",
-            alias=alias
-        )
-
-        if not x or x.get_text() == u'\xa0':
-            # don't even ask why eActivities \xa0 when it's "NULL" or whatever its equivalent is
-            return None
-
-        return dt[type](x.get_text())
 
     class DoesNotExist(exceptions.DoesNotExist):
         pass
@@ -375,7 +344,7 @@ class SalesInvoicesParser(FinancialDocumentationParser):
 
         return data
 
-    def item_pdf(self, item_id):
+    def item_pdf(self, item_id, **kwargs):
         # prime $_SESSION
         self.eactivities.load_and_start('/finance/documents')
 
@@ -521,7 +490,7 @@ class PurchaseOrdersParser(FinancialDocumentationParser):
 
         return data
 
-    def item_pdf(self, item_id):
+    def item_pdf(self, item_id, **kwargs):
         # prime the session
         self.eactivities.load_and_start('/finance/documents')
 

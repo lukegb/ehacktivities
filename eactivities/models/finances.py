@@ -1,10 +1,42 @@
-from . import Model, LazyModelMixin, LazyDictFromArrayModel
+from . import Model, LazyModelMixin, LazyDictFromArrayModel, ArrayModel, Account, Amount, Images, PdfableModelMixin
 from eactivities.parsers.finances import FinancesParser, BankingRecordsParser, SalesInvoicesParser, ClaimsParser, PurchaseOrdersParser, \
     TransactionCorrectionsParser, InternalChargesParser, MembersFundsRedistributionsParser, FundingRedistributionsParser
 
 
+class TransactionLine(Model):
+    _submodels = {
+        'value': Amount,
+        'unit_value': Amount,
+        'account': Account,
+        'activity': Account,
+        'funding_source': Account,
+        'consolidation': Account
+    }
+
+
+class TransactionLineSet(ArrayModel):
+    _submodel = TransactionLine
+
+
+class AuditEntry(Model):
+    pass
+
+
+class AuditTrail(ArrayModel):
+    _submodel = AuditEntry
+
+
+class Authoriser(Model):
+    pass
+
+
+class NextAuthorisers(Model):
+    pass
+
+
 class FinancialDocumentCollection(LazyDictFromArrayModel):
     _submodel = None
+    _lazy_id_attribute = 'item_id'
 
 
 class FinancialDocument(LazyModelMixin, Model):
@@ -17,6 +49,10 @@ class BankingRecord(FinancialDocument):
         'id', 'date', 'transaction_lines', 'gross_amount',
         'paying_in_slips'
     ]
+    _submodels = {
+        'transaction_lines': TransactionLineSet,
+        'paying_in_slips': Images
+    }
 
 
 class BankingRecords(FinancialDocumentCollection):
@@ -24,13 +60,18 @@ class BankingRecords(FinancialDocumentCollection):
     _lazy_loader_parser = BankingRecordsParser
 
 
-class SalesInvoice(FinancialDocument):
+class SalesInvoice(PdfableModelMixin, FinancialDocument):
     _lazy_loader_parser = SalesInvoicesParser
     _attributes = [
         'id', 'date', 'customer', 'customer_purchase_order_number',
         'gross_amount', 'status', 'international', 'audit_trail',
         'next_authorisers', 'transaction_lines', 'purchase_order_attachments',
     ]
+    _submodels = {
+        'transaction_lines': TransactionLineSet,
+        'next_authorisers': NextAuthorisers,
+        'purchase_order_attachments': Images
+    }
 
 
 class SalesInvoices(FinancialDocumentCollection):
@@ -45,6 +86,11 @@ class Claim(FinancialDocument):
         'notes', 'audit_trail', 'next_authorisers', 'transaction_lines',
         'receipts'
     ]
+    _submodels = {
+        'transaction_lines': TransactionLineSet,
+        'next_authorisers': NextAuthorisers,
+        'receipts': Images
+    }
 
 
 class Claims(FinancialDocumentCollection):
@@ -52,7 +98,7 @@ class Claims(FinancialDocumentCollection):
     _lazy_loader_parser = ClaimsParser
 
 
-class PurchaseOrder(FinancialDocument):
+class PurchaseOrder(PdfableModelMixin, FinancialDocument):
     _lazy_loader_parser = PurchaseOrdersParser
     _attributes = [
         'id', 'supplier', 'status', 'payment_date', 'gross_amount',
@@ -60,6 +106,11 @@ class PurchaseOrder(FinancialDocument):
         'audit_trail', 'next_authorisers', 'transaction_lines',
         'gross_amount', 'invoices'
     ]
+    _submodels = {
+        'transaction_lines': TransactionLineSet,
+        'next_authorisers': NextAuthorisers,
+        'invoices': Images
+    }
 
 
 class PurchaseOrders(FinancialDocumentCollection):
@@ -73,6 +124,11 @@ class TransactionCorrection(FinancialDocument):
         'id', 'status', 'gross_amount', 'from_transaction_lines',
         'to_transaction_lines', 'next_authorisers', 'audit_trail'
     ]
+    _submodels = {
+        'from_transaction_lines': TransactionLineSet,
+        'to_transaction_lines': TransactionLineSet,
+        'next_authorisers': NextAuthorisers
+    }
 
 
 class TransactionCorrections(FinancialDocumentCollection):
@@ -86,6 +142,10 @@ class InternalCharge(FinancialDocument):
         'id', 'status', 'gross_amount', 'charged_committee', 'receiving_committee',
         'notes', 'audit_trail', 'next_authorisers', 'transaction_lines'
     ]
+    _submodels = {
+        'transaction_lines': TransactionLineSet,
+        'next_authorisers': NextAuthorisers
+    }
 
 
 class InternalCharges(FinancialDocumentCollection):
@@ -100,6 +160,11 @@ class MembersFundsRedistribution(FinancialDocument):
         'to_transaction_lines', 'next_authorisers', 'audit_trail',
         'funding_source', 'gross_amount'
     ]
+    _submodels = {
+        'from_transaction_lines': TransactionLineSet,
+        'to_transaction_lines': TransactionLineSet,
+        'next_authorisers': NextAuthorisers
+    }
 
 
 class MembersFundsRedistributions(FinancialDocumentCollection):
@@ -114,6 +179,11 @@ class FundingRedistribution(FinancialDocument):
         'audit_trail', 'next_authorisers', 'from_transaction_lines',
         'to_transaction_lines'
     ]
+    _submodels = {
+        'from_transaction_lines': TransactionLineSet,
+        'to_transaction_lines': TransactionLineSet,
+        'next_authorisers': NextAuthorisers
+    }
 
 
 class FundingRedistributions(FinancialDocumentCollection):

@@ -16,14 +16,33 @@ def on_access_do_lazy_load(f):
     return inner
 
 
+class NoneableModelMixin(object):
+    pass
+
+
 class BaseModel(object):
     _submodels = []
     _attributes = []
 
-    def __init__(self, eactivities, data, parent=None, *args, **kwargs):
+    def __init__(self, eactivities, data, arguments=None, parent=None, parser=None, *args, **kwargs):
+        if data is None and arguments is not None and parser is not None:
+            data = parser.fetch(
+                eactivities=self._eactivities,
+                **arguments
+            )
+        elif data is None:
+            raise RuntimeError("data or (parser and arguments) must be passed!")
+
         self._data = data
+        self._arguments = arguments or {}
         self._parent = parent
         self._eactivities = eactivities
+        self._parser = parser
+
+        if parent is not None:
+            p = dict(parent._arguments)
+            p.update(self._arguments)
+            self._arguments = p
 
         self.load(data)
 
@@ -35,12 +54,24 @@ class Model(BaseModel):
     def load(self, data):
         for k, v in data.iteritems():
             if k in self._submodels:
-                v = self._submodels[k](eactivities=self._eactivities, data=v, parent=self)
+                if v is None and issubclass(self._submodels[k], NoneableModelMixin):
+                    # v is fine as is...
+                    pass
+                else:
+                    v = self._submodels[k](eactivities=self._eactivities, parser=self._parser, data=v, parent=self)
             setattr(self, k, v)
         self._data.update(**data)
 
     def dump(self):
         return self._data
+
+
+class MockModel(BaseModel):
+    def load(self, data):
+        pass
+
+    def dump(self):
+        return {}
 
 
 class CollectionModelMixin(object):
@@ -75,6 +106,23 @@ class CollectionModelMixin(object):
         return repr(self._inner)
 
 
+class StringModel(BaseModel):
+    def load(self, data):
+        pass
+
+    def dump(self):
+        return self._data
+
+    def __str__(self):
+        return str(self._data)
+
+    def __unicode__(self):
+        return unicode(self._data)
+
+    def __repr__(self):
+        return repr(self._data)
+
+
 class ArrayModel(CollectionModelMixin, BaseModel):
     _submodel = None
 
@@ -84,10 +132,16 @@ class ArrayModel(CollectionModelMixin, BaseModel):
         super(ArrayModel, self).__init__(*args, **kwargs)
 
     def load(self, data):
-        self._inner = [self._submodel(eactivities=self._eactivities, data=x, parent=self) for x in data]
+        self._inner = []
+        for x in data:
+            if x is None and issubclass(self._submodels[x], NoneableModelMixin):
+                pass
+            else:
+                x = self._submodel(eactivities=self._eactivities, parser=self._parser, data=x, parent=self)
+            self._inner.append(x)
 
     def dump(self):
-        return [x.dump() for x in self._inner]
+        return [x.dump() if x is not None else x for x in self._inner]
 
 
 class DictModel(CollectionModelMixin, BaseModel):
@@ -100,10 +154,19 @@ class DictModel(CollectionModelMixin, BaseModel):
         super(DictModel, self).__init__(*args, **kwargs)
 
     def load(self, data):
-        self._inner = self._dictish([(k, self._submodel(eactivities=self._eactivities, data=v, parent=self)) for k, v in data.iteritems()])
+        i = []
+        for k, v in data.iteritems():
+            if v is None and issubclass(self._submodels[k], NoneableModelMixin):
+                pass
+            else:
+                v = self._submodel(
+                    eactivities=self._eactivities, parser=self._parser, data=v, parent=self
+                )
+            i.append((k, v))
+        self._inner = self._dictish(i)
 
     def dump(self):
-        return self._dictish([(k, v.dump()) for (k, v) in self._inner.iteritems()])
+        return self._dictish([(k, v.dump() if v is not None else v) for (k, v) in self._inner.iteritems()])
 
     def items(self):
         return self._inner.items()
@@ -119,10 +182,20 @@ class LazyModelMixin(object):
     _lazy_loader_parser = None
     _attributes = []
     _lazy_loaded = False
+    _lazy_id_attribute = 'id'
+
+    def __init__(self, *args, **kwargs):
+        super(LazyModelMixin, self).__init__(*args, **kwargs)
+
+        if isinstance(self._parent, LazyCollectionModelMixin):
+            self._arguments[self._parent._lazy_id_attribute] = self._data[self._lazy_id_attribute]
 
     def perform_lazy_load(self):
         llp = self._lazy_loader_parser(self._eactivities)
-        data = llp.fetch_data(**self._data)
+        kwargs = dict(self._data)
+        if isinstance(self._parent, LazyCollectionModelMixin):
+            kwargs[self._parent._lazy_id_attribute] = kwargs[self._lazy_id_attribute]
+        data = llp.fetch_data(**kwargs)
         if data is None:
             raise self.DoesNotExist()
         self.load(data)
@@ -142,6 +215,7 @@ class LazyModelMixin(object):
 class LazyCollectionModelMixin(CollectionModelMixin):
     LAZY_FICTITIOUS_DATA = {'FICTITIOUS': True}
     _lazy_loader_parser = None
+    _lazy_id_attribute = 'id'
 
     def __init__(self, data=None, *args, **kwargs):
         # Lazy collections are "special"
@@ -151,8 +225,12 @@ class LazyCollectionModelMixin(CollectionModelMixin):
         # We hide the data argument and construct a fictitious one to
         # work around this.
         self._lazy_collection_data = data
+        kwargs.setdefault('parser', self._lazy_loader_parser)
+        kwargs.setdefault('arguments', data)
 
-        super(LazyCollectionModelMixin, self).__init__(data=self.LAZY_FICTITIOUS_DATA, *args, **kwargs)
+        super(LazyCollectionModelMixin, self).__init__(
+            data=self.LAZY_FICTITIOUS_DATA, *args, **kwargs
+        )
 
         self._lazy_loaded = False
         self._lazy_load_count = 0
@@ -192,11 +270,18 @@ class LazyCollectionModelMixin(CollectionModelMixin):
             self.perform_full_lazy_load()
             return self._inner[key]
 
-        data = self._lazy_loader_parser_instance.fetch_data(id=key, **self._lazy_collection_data)
+        d = dict(self._lazy_collection_data)
+        d[self._lazy_id_attribute] = key
+
+        print d
+
+        data = self._lazy_loader_parser_instance.fetch_data(**d)
         if data is None:
             raise KeyError("No such item")
 
-        return self._submodel(eactivities=self._eactivities, data=data, parent=self)
+        return self._submodel(
+            eactivities=self._eactivities, arguments={self._lazy_id_attribute: key}, parser=self._parser, data=data, parent=self
+        )
 
     @on_access_do_lazy_load
     def __len__(self):
@@ -269,10 +354,47 @@ class LazyDictFromArrayModel(LazyDictModel):
         super(LazyDictFromArrayModel, self).load(new_data)
 
     def dump(self):
-        return [x.dump() for x in self._inner.values()]
+        return [x.dump() if x is not None else x for x in self._inner.values()]
 
 
 # LazyArrayModel is a lie
+
+
+# Now for some generically useful models
+
+class Account(Model):
+    pass
+
+
+class VAT(Model):
+    pass
+
+
+class Amount(Model):
+    _submodels = {
+        'vat': VAT
+    }
+
+
+class Image(NoneableModelMixin, StringModel):
+    _image_id_attribute = 'image_id'
+
+    def retrieve(self):
+        self._arguments[self._image_id_attribute] = self._data
+        return self._parser(self._eactivities).image(**self._arguments)
+
+    def raw(self):
+        self._arguments[self._image_id_attribute] = self._data
+        return self._parser(self._eactivities).pdf(**self._arguments)
+
+
+class Images(ArrayModel):
+    _submodel = Image
+
+
+class PdfableModelMixin(object):
+    def pdf(self):
+        return self._parser(self._eactivities).item_pdf(**self._arguments)
 
 from .club import Club
 __all__ = ['Club']

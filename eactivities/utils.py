@@ -3,6 +3,19 @@
 import decimal
 import datetime
 
+DEFAULT_VAT = {
+    'S1': decimal.Decimal('1.20'),  # Standard
+    'P1': decimal.Decimal('1.20'),
+    'SL': decimal.Decimal('1.05'),  # Reduced
+    'PL': decimal.Decimal('1.05'),
+    'S0': decimal.Decimal('1'),  # 0%
+    'P0': decimal.Decimal('1'),
+    'SE': decimal.Decimal('1'),  # Exempt
+    'PE': decimal.Decimal('1'),
+    'SN': decimal.Decimal('1'),  # No VAT
+    'PN': decimal.Decimal('1'),
+}
+
 
 def format_year(year):
     start_year = year % 100
@@ -22,9 +35,12 @@ def format_vat(vat_str):
     vat_rate = ''.join([
         x for x in unicode(vat_rate) if x in '0123456789.-'
     ])
-    dvat_rate = decimal.Decimal(vat_rate)
-    dvat_rate /= 100
-    dvat_rate += 1
+    if vat_rate != '':
+        dvat_rate = decimal.Decimal(vat_rate)
+        dvat_rate /= 100
+        dvat_rate += 1
+    else:
+        dvat_rate = DEFAULT_VAT[vat_type]
 
     return {'rate': vat_type, 'value': dvat_rate}
 
@@ -38,11 +54,11 @@ def munge_value(value):
     elif 'gross' in value:
         dgross = decimal.Decimal(value['gross'])
         dnet = dgross / value['vat']['value']
-        value['net'] = quantize_decimal(dnet)
+        value['net'] = dnet
     elif 'net' in value:
         dnet = decimal.Decimal(value['net'])
         dgross = dnet * value['vat']['value']
-        value['gross'] = quantize_decimal(dgross)
+        value['gross'] = dgross
 
     return value
 
@@ -78,8 +94,19 @@ def quantize_decimal(dprice):
     ))
 
 
+def output_money(dprice):
+    return quantize_decimal(dprice * 100)
+
+
 def parse_date(date):
     try:
         return datetime.datetime.strptime(date, "%d/%m/%Y").date()
+    except UnicodeEncodeError:
+        return None
+
+
+def parse_datetime(date):
+    try:
+        return datetime.datetime.strptime(date, "%d/%m/%Y %H:%M")
     except UnicodeEncodeError:
         return None

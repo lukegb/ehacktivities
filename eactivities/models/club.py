@@ -1,6 +1,7 @@
 from . import Model, LazyModelMixin, ArrayModel
 from .documentation import Documentation
 from .finances import Finances
+from .shop import Shop
 from eactivities.parsers.club import ClubParser, MembersListParser
 
 
@@ -70,6 +71,9 @@ class Club(Model, LazyModelMixin):
 
     def finances(self, year):
         return Finances(eactivities=self._eactivities, data={'club_id': self.id, 'year': year}, parent=self)
+
+    def shop(self, year):
+        return Shop(eactivities=self._eactivities, data={'club_id': self.id, 'year': year}, parent=self)
 
     def pick_best_role(self):
         best_roles = []

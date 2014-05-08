@@ -32,65 +32,65 @@ class TestMungeValue(unittest.TestCase):
     def test_no_vat(self):
         self.assertEqual(
             utils.munge_value({
-                'gross': decimal.Decimal(500)
+                'gross': decimal.Decimal('500')
             }),
             {
-                'gross': decimal.Decimal(500)
+                'gross': decimal.Decimal('500')
             }
         )
         self.assertEqual(
             utils.munge_value({
-                'net': decimal.Decimal(500)
+                'net': decimal.Decimal('500')
             }),
             {
-                'net': decimal.Decimal(500)
+                'net': decimal.Decimal('500')
             }
         )
         self.assertEqual(
             utils.munge_value({
-                'net': decimal.Decimal(500),
-                'gross': 560
+                'net': decimal.Decimal('500'),
+                'gross': decimal.Decimal('560')
             }),
             {
-                'net': decimal.Decimal(500),
-                'gross': 560
+                'net': decimal.Decimal('500'),
+                'gross': decimal.Decimal('560')
             }
         )
 
     def test_vat_net_gross(self):
         self.assertEqual(
             utils.munge_value({
-                'net': decimal.Decimal(500),
-                'gross': 560,
+                'net': decimal.Decimal('500'),
+                'gross': decimal.Decimal('560'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.12)
+                    'value': decimal.Decimal('1.12')
                 }
             }),
             {
-                'net': decimal.Decimal(500),
-                'gross': 560,
+                'net': decimal.Decimal('500'),
+                'gross': decimal.Decimal('560'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.12)
+                    'value': decimal.Decimal('1.12')
                 }
             }
         )
         self.assertEqual(
             utils.munge_value({
-                'net': 700,
-                'gross': 560,
+                'net': decimal.Decimal('700'),
+                'gross': decimal.Decimal('560'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.12)
+                    'value': decimal.Decimal('1.12')
                 }
             }),
             {
-                'net': 700,
-                'gross': 560,
+                'net': decimal.Decimal('700'),
+                'gross': decimal.Decimal('560'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.12)
+                    'value': decimal.Decimal('1.12')
                 }
             }
         )
@@ -98,35 +98,35 @@ class TestMungeValue(unittest.TestCase):
     def test_vat_net(self):
         self.assertEqual(
             utils.munge_value({
-                'net': decimal.Decimal(500),
+                'net': decimal.Decimal('500'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.2)
+                    'value': decimal.Decimal('1.2')
                 }
             }),
             {
-                'net': decimal.Decimal(500),
-                'gross': 600,
+                'net': decimal.Decimal('500'),
+                'gross': decimal.Decimal('600'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.2)
+                    'value': decimal.Decimal('1.2')
                 }
             }
         )
         self.assertEqual(
             utils.munge_value({
-                'net': decimal.Decimal(500),
+                'net': decimal.Decimal('500'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.175)
+                    'value': decimal.Decimal('1.175')
                 }
             }),
             {
-                'net': decimal.Decimal(500),
-                'gross': 588,
+                'net': decimal.Decimal('500'),
+                'gross': decimal.Decimal('587.50'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.175)
+                    'value': decimal.Decimal('1.175')
                 }
             }
         )
@@ -134,35 +134,35 @@ class TestMungeValue(unittest.TestCase):
     def test_vat_gross(self):
         self.assertEqual(
             utils.munge_value({
-                'gross': 600,
+                'gross': decimal.Decimal('600'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.2)
+                    'value': decimal.Decimal('1.2')
                 }
             }),
             {
-                'net': decimal.Decimal(500),
-                'gross': 600,
+                'net': decimal.Decimal('500'),
+                'gross': decimal.Decimal('600'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.2)
+                    'value': decimal.Decimal('1.2')
                 }
             }
         )
         self.assertEqual(
             utils.munge_value({
-                'gross': 588,
+                'gross': decimal.Decimal('587.50'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.175)
+                    'value': decimal.Decimal('1.175')
                 }
             }),
             {
-                'net': decimal.Decimal(500),
-                'gross': 588,
+                'net': decimal.Decimal('500'),
+                'gross': decimal.Decimal('587.50'),
                 'vat': {
                     'rate': 'P1',
-                    'value': decimal.Decimal(1.175)
+                    'value': decimal.Decimal('1.175')
                 }
             }
         )
