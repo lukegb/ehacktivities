@@ -34,9 +34,6 @@ class TestClub(unittest.TestCase):
         self.assertEquals(self.club.id, 211)
 
     def test_getattr(self):
-        self.eactivities.ajax_handler.return_value = (BeautifulSoup(
-            xml.admin_csp_details_211_tab395
-        ), None)
         with self.assertRaises(AttributeError):
             self.club.lol
         self.assertEquals(self.club.name, "RCC FERRET FANCIERS")
@@ -51,9 +48,6 @@ class TestClub(unittest.TestCase):
         self.assertEquals(self.club.membership.full_members_quota, 120)
         self.assertEquals(self.club.membership.membership_cost, decimal.Decimal('5.00'))
         self.assertEquals(self.club.membership.associate_members, 11)
-        self.eactivities.ajax_handler.assert_called_with(
-            {'navigate': '395', 'ajax': 'activatetabs'}
-        )
 
     def test_getattr_noaccess(self):
         self.response['/admin/csp/details/211'] = xml.norecords
