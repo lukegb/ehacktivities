@@ -38,6 +38,12 @@ Various financial documents have "status" fields (e.g. POs, claims). They have t
   
 Any additional statuses will be added as/when they arise.
 
+## Authentication
+
+The system may expire tokens internally at will (because it's interacting with eActivities). If this happens,
+you will be required to submit a renewal request for your token. You will be notified that this required by
+an `HTTP 449` response. Simply submit your token to the appropriate endpoint below to receive a new one.
+
 ## Integrity Checking
 
 eHacktivities will attempt to perform some sanity checking of the results it returns.
