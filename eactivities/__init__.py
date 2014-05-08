@@ -32,7 +32,12 @@ class EActivities(object):
 
         if session is not None:
             # prime requests session
-            self.session.get(BASE_PATH, cookies={SESSION_COOKIE_NAME, session})
+            resp = self.session.get(BASE_PATH, cookies={SESSION_COOKIE_NAME: session})
+
+            # don't check for loginArea because it shows up even if you're
+            # logged in. "Log out" shows up there if you're logged in.
+            if 'logout()' not in resp.text:
+                raise exceptions.NotLoggedIn()
         elif credentials is not None:
             # authenticate
             self.authenticate(credentials)

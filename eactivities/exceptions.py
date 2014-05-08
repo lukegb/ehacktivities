@@ -221,6 +221,10 @@ class AuthenticationFailed(EActivitiesException):
     pass
 
 
+class NotLoggedIn(AuthenticationFailed):
+    pass
+
+
 class DoesNotExist(EActivitiesException):
     pass
 
