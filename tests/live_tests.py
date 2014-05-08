@@ -231,7 +231,12 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             si.item_pdf(sil_zero_item['id'])
 
             if len(sil_zero_item['purchase_order_attachments']) > 1:
-                si.pdf(club_id=test_club_id, year=self.year, item_id=sil_zero_item['id'], image_id=sil_zero_item['purchase_order_attachments'][0])
+                si.pdf(
+                    club_id=test_club_id,
+                    year=self.year,
+                    item_id=sil_zero_item['id'],
+                    image_id=sil_zero_item['purchase_order_attachments'][0]
+                )
 
     def test_claims(self):
         cl = finance_parsers.ClaimsParser(self.eactivities)
