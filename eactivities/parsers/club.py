@@ -1,4 +1,4 @@
-from .. import utils
+from .. import utils, encoding_utils, exceptions
 from . import BaseParser
 
 
@@ -46,77 +46,82 @@ class ClubParser(BaseParser):
                 )
             ]))
 
-            # now for membership
-            membership_soup, _ = self.eactivities.ajax_handler({
-                'ajax': 'activatetabs', 'navigate': '395'
-            })
-            membership = {}
+        # try their financials page for the membership info
+        membership_soup, _ = self.eactivities.load_and_start(
+            '/finance/transactions/{}'.format(id)
+        )
+        membership = {}
 
-            _, _, full_members_bit = membership_soup.find(
-                "infofield", id="354-0"
-            ).get_text().partition(': ')
-            full_members_bit, _, _ = full_members_bit.partition(' (')
-            full_members, _, membership_quota = full_members_bit.partition(
-                ' of '
-            )
-            membership['full_members'] = int(full_members)
-            membership['full_members_quota'] = int(membership_quota)
+        name = unicode(membership_soup.xmlcurrenttitle.get_text())
+        if '(' not in name:
+            return None
+        info['name'], _ = utils.split_role(name)
 
-            _, _, membership_costs = membership_soup.find(
-                "infofield", id="354-1"
-            ).get_text().partition(' costs ')
-            membership['membership_cost'] = utils.format_price(
-                membership_costs
-            )
+        _, _, full_members_bit = membership_soup.find(
+            "infofield", alias="MemDetails"
+        ).get_text().partition(': ')
+        full_members_bit, _, _ = full_members_bit.partition(' (')
+        full_members, _, membership_quota = full_members_bit.partition(
+            ' of '
+        )
+        membership['full_members'] = int(full_members)
+        membership['full_members_quota'] = int(membership_quota)
 
-            membership['associate_members'] = 0
-            associate_members_bit = membership_soup.find(
-                "infofield", id="355-0"
-            )
-            if associate_members_bit:
-                am_str = associate_members_bit.get_text()
-                _, _, associate_members = am_str.partition(': ')
-                membership['associate_members'] = int(associate_members)
+        _, _, membership_costs = membership_soup.find(
+            "infofield", alias="YearDetails"
+        ).get_text().partition(' costs ')
+        membership['membership_cost'] = utils.format_price(
+            membership_costs
+        )
 
-            info['membership'] = membership
-        else:
-            # try their financials page for the membership info?
-            membership_soup, _ = self.eactivities.load_and_start(
-                '/finance/transactions/{}'.format(id)
-            )
-            membership = {}
+        membership['associate_members'] = 0
+        associate_members_bit = membership_soup.find(
+            "infofield", alias="MemNum"
+        )
+        if associate_members_bit:
+            am_str = associate_members_bit.get_text()
+            _, _, associate_members = am_str.partition(': ')
+            membership['associate_members'] = int(associate_members)
 
-            name = unicode(membership_soup.xmlcurrenttitle.get_text())
-            if '(' not in name:
-                return None
-            info['name'], _ = utils.split_role(name)
-
-            _, _, full_members_bit = membership_soup.find(
-                "infofield", alias="MemDetails"
-            ).get_text().partition(': ')
-            full_members_bit, _, _ = full_members_bit.partition(' (')
-            full_members, _, membership_quota = full_members_bit.partition(
-                ' of '
-            )
-            membership['full_members'] = int(full_members)
-            membership['full_members_quota'] = int(membership_quota)
-
-            _, _, membership_costs = membership_soup.find(
-                "infofield", alias="YearDetails"
-            ).get_text().partition(' costs ')
-            membership['membership_cost'] = utils.format_price(
-                membership_costs
-            )
-
-            membership['associate_members'] = 0
-            associate_members_bit = membership_soup.find(
-                "infofield", alias="MemNum"
-            )
-            if associate_members_bit:
-                am_str = associate_members_bit.get_text()
-                _, _, associate_members = am_str.partition(': ')
-                membership['associate_members'] = int(associate_members)
-
-            info['membership'] = membership
+        info['membership'] = membership
 
         return info
+
+
+class MembersListParser(BaseParser):
+    def fetch_data(self, id, **kwargs):
+        details_soup, _ = self.eactivities.load_and_start(
+            '/admin/csp/details/{}'.format(id)
+        )
+
+        # click "members"
+        members_tab_id = details_soup.find("enclosure", label="Members").attrs['id']
+        self.eactivities.activate_tab(details_soup, members_tab_id)
+
+        # download the csv!
+        resp = self.eactivities.streaming_get("/admin/csp/details/csv")
+        csvr = encoding_utils.EActivitiesCsvReader(resp.raw)
+
+        mode = 'full'
+        out = []
+
+        for line in csvr:
+            if len(line) == 1 and 'Associate' in line[0]:
+                mode = 'associate'
+                continue
+            elif len(line) <= 1:
+                continue
+            elif len(line) != 7:
+                raise exceptions.EActivitiesHasChanged('CSV format has changed. Again.')
+            elif line[0] == 'Date':
+                continue
+
+            data = {
+                'membership_type': mode
+            }
+            data['date'], data['order_no'], data['cid'], data['login'], data['first_name'], data['last_name'], data['email'] = line
+            data['date'] = utils.parse_date(data['date'])
+
+            out.append(data)
+
+        return out

@@ -134,7 +134,8 @@ class LazyModelMixin(object):
             if name in self._attributes:
                 data = self.perform_lazy_load()
                 if name in data:
-                    return data[name]
+                    # nasty hack to make sure all processing is done!
+                    return getattr(self, name)
         raise AttributeError("{} is not an attribute".format(name))
 
 

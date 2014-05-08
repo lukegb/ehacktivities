@@ -1,7 +1,23 @@
-from . import Model, LazyModelMixin
+from . import Model, LazyModelMixin, ArrayModel
 from .documentation import Documentation
 from .finances import Finances
-from eactivities.parsers.club import ClubParser
+from eactivities.parsers.club import ClubParser, MembersListParser
+
+
+def collapse_key_list_data(raw_members_list_data, key_list_data):
+    # TODO: collapse key_list_data into members list
+    return raw_members_list_data
+
+
+class ClubMember(Model):
+    _attributes = [
+        'date', 'order_no', 'cid', 'login',
+        'first_name', 'last_name', 'email', 'membership_type'
+    ]
+
+
+class ClubMembersList(ArrayModel):
+    _submodel = ClubMember
 
 
 class ClubMembership(Model):
@@ -9,6 +25,17 @@ class ClubMembership(Model):
         'full_members', 'full_members_quota',
         'membership_cost', 'associate_members'
     ]
+
+    def list(self, augmented=False):
+        data = MembersListParser.fetch(self._eactivities, id=self._parent.id)
+
+        if augmented:
+            data = collapse_key_list_data(
+                data,
+                self._parent.documentation().key_lists()
+            )
+
+        return ClubMembersList(eactivities=self._eactivities, data=data, parent=self)
 
 
 class Club(Model, LazyModelMixin):

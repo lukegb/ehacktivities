@@ -144,6 +144,10 @@ class LazyModelTestCase(unittest.TestCase):
         d = AlwaysReturnsDictParser.data
         m = TestLazyModel(eactivities=None, parent=None, data={})
 
+        # this assertion should go first
+        # i.e. make sure submodel processing happens on initial load
+        self.assertNotEqual(m.xyz, d['xyz'])
+
         self.assertEqual(m.abc, d['abc'])
         self.assertEqual(m.mno, d['mno'])
         self.assertEqual(m.ghi, d['ghi'])
