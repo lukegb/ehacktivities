@@ -273,8 +273,6 @@ class LazyCollectionModelMixin(CollectionModelMixin):
         d = dict(self._lazy_collection_data)
         d[self._lazy_id_attribute] = key
 
-        print d
-
         data = self._lazy_loader_parser_instance.fetch_data(**d)
         if data is None:
             raise KeyError("No such item")

@@ -200,7 +200,7 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             ])
             self.assertEqual(len(brl_zero_item['paying_in_slips']), 1)
 
-            br.pdf(test_club_id, self.year, brl_zero_item['id'], brl_zero_item['paying_in_slips'][0])
+            br.pdf(club_id=test_club_id, year=self.year, item_id=brl_zero_item['id'], image_id=brl_zero_item['paying_in_slips'][0])
 
     def test_sales_invoices(self):
         si = finance_parsers.SalesInvoicesParser(self.eactivities)
@@ -231,7 +231,7 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             si.item_pdf(sil_zero_item['id'])
 
             if len(sil_zero_item['purchase_order_attachments']) > 1:
-                si.pdf(test_club_id, self.year, sil_zero_item['id'], sil_zero_item['purchase_order_attachments'][0])
+                si.pdf(club_id=test_club_id, year=self.year, item_id=sil_zero_item['id'], image_id=sil_zero_item['purchase_order_attachments'][0])
 
     def test_claims(self):
         cl = finance_parsers.ClaimsParser(self.eactivities)
@@ -256,7 +256,7 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             ])
 
             if len(cll_zero_item['receipts']) > 1:
-                cl.pdf(test_club_id, self.year, cll_zero_item['id'], cll_zero_item['receipts'][0])
+                cl.pdf(club_id=test_club_id, year=self.year, item_id=cll_zero_item['id'], image_id=cll_zero_item['receipts'][0])
 
     def test_purchase_orders(self):
         po = finance_parsers.PurchaseOrdersParser(self.eactivities)
@@ -285,7 +285,7 @@ class ClubFinanceTestCase(ClubBaseTestCase):
             ])
 
             if len(pol_zero_item['invoices']) > 1:
-                po.pdf(test_club_id, self.year, pol_zero_item['id'], pol_zero_item['invoices'][0])
+                po.pdf(club_id=test_club_id, year=self.year, item_id=pol_zero_item['id'], image_id=pol_zero_item['invoices'][0])
 
     def test_transaction_corrections(self):
         tc = finance_parsers.TransactionCorrectionsParser(self.eactivities)
@@ -417,7 +417,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(bri['date'], datetime.date(2012, 10, 16))
         self.assertEqual(len(bri['transaction_lines']), 5)
         self.assertEqual(
-            self.fetch_sha1(br.pdf(test_club_id, self.year, bri['id'], bri['paying_in_slips'][0])),
+            self.fetch_sha1(br.pdf(club_id=test_club_id, year=self.year, item_id=bri['id'], image_id=bri['paying_in_slips'][0])),
             'a5ba9d8b9efca6f593d7af5046c9fe7de32c7b09'
         )
 
@@ -443,7 +443,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(sii['gross_amount'], sil_item['gross_amount'])
         self.assertEqual(sii['status'], sil_item['status'])
 
-        self.assertEqual(self.hash_sha1(sii['customer']['address']), '5eda69e394bf095ac9f2e434dadb3e24d3c6b912')
+        self.assertEqual(self.hash_sha1(sii['customer']['address']), '124418ea0fb98bbee68e4a8124954ca564716d7f')
         self.assertEqual(self.hash_sha1(sii['customer']['contact']['name']), '3333834532534d99a8a54b04f210211262f9b90b')
         self.assertEqual(self.hash_sha1(sii['customer']['contact']['phone']), 'ac653ab83d1553d0a28dac8b20aac29eb2e7b227')
         self.assertEqual(self.hash_sha1(sii['customer']['contact']['email']), '26cc3807a049785ba8d286b2834e29bfb450f574')
@@ -473,7 +473,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(sii['transaction_lines'][0]['quantity'], 1)
 
         self.assertEqual(
-            self.fetch_sha1(si.pdf(test_club_id, self.year, sii['id'], sii['purchase_order_attachments'][0])),
+            self.fetch_sha1(si.pdf(club_id=test_club_id, year=self.year, item_id=sii['id'], image_id=sii['purchase_order_attachments'][0])),
             'cc9ccb9807694f654aed6ddd590ac404d40ca3e0'
         )
 
@@ -534,7 +534,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         self.assertEqual(hashed_at[1]['date'], '26a07a91710859901091512650b1542cda30f7e3')
 
         self.assertEqual(
-            self.fetch_sha1(cl.pdf(test_club_id, self.year, cli['id'], cli['receipts'][0])),
+            self.fetch_sha1(cl.pdf(club_id=test_club_id, year=self.year, item_id=cli['id'], image_id=cli['receipts'][0])),
             '9258149cef4416566134a84fcdbf638e977a4e48'
         )
 
@@ -571,7 +571,7 @@ class ClubFinanceCinemaTestCase(ClubBaseTestCase):
         poi = po.item(test_club_id, self.year, u'5002057')
         self.assertEqual(poi['id'], u'5002057')
         self.assertEqual(poi['supplier']['name'], pol_item['supplier']['name'])
-        self.assertEqual(self.hash_sha1(poi['supplier']['address']), 'a0b01b7d9a070a14eac203b14c973e90a6cce307')
+        self.assertEqual(self.hash_sha1(poi['supplier']['address']), 'e3b54db257c9fc535a312bac319b1ae83c04e1b2')
         self.assertEqual(poi['status'], pol_item['status'])
         self.assertEqual(poi['invoice_received'], pol_item['invoice_received'])
         self.assertEqual(poi['finished_goods_receipting'], pol_item['finished_goods_receipting'])
