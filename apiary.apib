@@ -63,7 +63,7 @@ Sometimes new fields may be added. If this is the case, then:
   
 ## Past Years
 
-Some data is not avaiable for years other than the current one. In this case, when
+Some data is not available for years other than the current one. In this case, when
 the data is requested, eHacktivities will return `410 Gone`.
 
 # Group Sessions
@@ -525,12 +525,15 @@ It is believed that sales invoices can only have the following statuses:
 + Response 200 (application/json)
 
         {
-            "full": [
+            "full": {
+                "01234567": [Club Member][]
+            },
+            "associate": {
+                "AM-215151": [Club Member][],
+                "unknown": [
                 [Club Member][]
-            ],
-            "associate": [
-                [Club Member][]
-            ]
+                ]
+            }
         }
 
 ## Club Member Information [/clubs/{id}/{year}/members/{membership-type}]
