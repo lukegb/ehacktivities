@@ -1,8 +1,9 @@
 # vim: set fileencoding=utf-8
 
 import re
+import decimal
 
-from .. import utils, exceptions
+from .. import utils, exceptions, encoding_utils
 from . import BaseParser
 
 AMOUNT_RE = re.compile(r"Amount \(")
@@ -30,8 +31,8 @@ class ShopParser(BaseParser):
         if committee_box_soup is None:
             raise exceptions.EActivitiesHasChanged("Can't find Committee text box")
         _, got_club_id = utils.split_role(committee_box_soup.attrs['value'])
-        if got_club_id != club_id:
-            raise exceptions.AccessDenied("Access denied")
+        if unicode(got_club_id) != unicode(club_id):
+            raise exceptions.AccessDenied("Access denied - found club {}, expected {}".format(got_club_id, club_id))
 
         # Edit Submitted Products
         esp_soup = document_soup.find("enclosure", label="Edit Submitted Products")
@@ -150,6 +151,7 @@ class ShopParser(BaseParser):
         out['skus'] = []
         for sku_soup in item_soup.find("enclosure", label="Product Lines").find_all("recordrow"):
             out['skus'].append({
+                'id': unicode(sku_soup.attrs['id']),
                 'name': self.parse_field(sku_soup, 'Name', 'text', form=True),
                 'account': self.parse_field(sku_soup, 'Account', 'account', form=True),
                 'activity': self.parse_field(sku_soup, 'Activity', 'account', form=True),
@@ -166,3 +168,111 @@ class ShopParser(BaseParser):
 
     class DoesNotExist(exceptions.DoesNotExist):
         pass
+
+
+class ShopProductPurchaserParser(BaseParser):
+    def optimus_prime(self, club_id, year):
+        document_soup, _ = self.eactivities.load_and_start(
+            '/finance/income/shop/{}'.format(club_id)
+        )
+
+        if document_soup.find("xmlcurrenttitle", text="NO RECORDS") is not None:
+            raise exceptions.AccessDenied("NO RECORDS found on page")
+
+        committee_box_soup = document_soup.find("insertfield", attrs={'name': 'Committee'})
+        if committee_box_soup is None:
+            raise exceptions.EActivitiesHasChanged("Can't find Committee text box")
+        _, got_club_id = utils.split_role(committee_box_soup.attrs['value'])
+        if unicode(got_club_id) != unicode(club_id):
+            raise exceptions.AccessDenied("Access denied")
+
+        # Purchases Summary
+        ps_soup = document_soup.find("enclosure", label="Purchases Summary")
+        if not ps_soup:
+            raise exceptions.EActivitiesHasChanged("Can't find Purchases Summary")
+        if ps_soup.attrs['active'] != 'true':
+            self.eactivities.activate_tab(document_soup, ps_soup.attrs['id'])
+            ps_soup = document_soup.find("enclosure", label="Purchases Summary")
+
+        # Purchase Reports
+        pr_soup = ps_soup.find("enclosure", label="Purchase Reports")
+        if not pr_soup:
+            raise exceptions.EActivitiesHasChanged("Can't find Purchase Reports")
+        if pr_soup.attrs['active'] != 'true':
+            self.eactivities.activate_tab(document_soup, pr_soup.attrs['id'])
+            pr_soup = ps_soup.find("enclosure", label="Purchase Reports")
+
+        # <year>
+        y = utils.format_year(year)
+        year_soup = ps_soup.find("tabenclosure", label=y)
+        if not year_soup:
+            raise exceptions.YearNotAvailable()
+        if year_soup.attrs['active'] != 'true':
+            self.eactivities.activate_tab(document_soup, year_soup.attrs['id'])
+            year_soup = ps_soup.find("tabenclosure", label=y)
+
+        return year_soup, document_soup
+
+    def fetch_data(self, club_id, year, id, sku_name=None):
+        data = ShopParser(self.eactivities).fetch_data(club_id, year, id)
+
+        product_name = data['name']
+
+        if sku_name is not None:
+            for sku in data['skus']:
+                if sku['name'] == sku_name:
+                    break
+            else:
+                raise self.DoesNotExist("Unable to find SKU")
+
+        year_soup, document_soup = self.optimus_prime(club_id, year)
+
+        # find the infotable
+        product_table_soup = year_soup.find("infotable", title=product_name)
+        if not product_table_soup:
+            raise exceptions.EActivitiesHasChanged("Unable to locate table on Purchase Reports page")
+
+        if sku_name is None:
+            # if we're doing the product and not an SKU, handle it now
+            return self.handle_csv(product_table_soup.attrs['linkobj'])
+
+        # otherwise, keep going to find the SKU
+        sku_row_soup = product_table_soup.find("infotablecell", text=sku_name)
+        if not sku_row_soup:
+            raise exceptions.EActivitiesHasChanged("Unable to locate row on Purchase Reports page")
+        sku_row_soup = sku_row_soup.find_parent("infotablerow")
+
+        return self.handle_csv(sku_row_soup.find("infotablecell", alias="Download").attrs['linkobj'])
+
+    def handle_csv(self, relative_url):
+        relative_url = '/' + relative_url
+
+        # download the csv!
+        resp = self.eactivities.streaming_get(relative_url)
+        csvr = encoding_utils.EActivitiesDictCsvReader(resp.raw)
+
+        out = []
+        for row in csvr:
+            data = {
+                'date': utils.parse_date(row['Date']),
+                'order_no': row['Order No'],
+                'cid': row['CID/Card Number'],
+                'login': row['Login'],
+                'first_name': row['First Name'],
+                'last_name': row['Last Name'],
+                'email': row['Email'],
+                'product_name': row['Product Name'],
+                'unit_price': {
+                    'gross': decimal.Decimal(row['Unit Price'])
+                },
+                'quantity': {
+                    'ordered': None if row['Quantity'] == '' else int(row['Quantity']),
+                    'collected': None if row['Quantity Collected'] == '' else int(row['Quantity Collected'])
+                },
+                'price': {
+                    'gross': decimal.Decimal(row['Gross Price'])
+                }
+            }
+            out.append(data)
+
+        return out

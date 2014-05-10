@@ -1,5 +1,16 @@
 from . import Model, LazyModelMixin, LazyDictFromArrayModel, ArrayModel, MockModel, Account, Amount, Image
-from eactivities.parsers.shop import ShopParser
+from eactivities.parsers.shop import ShopParser, ShopProductPurchaserParser
+
+
+class ShopProductPurchaser(Model):
+    _attributes = [
+        'date', 'order_no', 'cid', 'login',
+        'first_name', 'last_name', 'email', 'membership_type'
+    ]
+
+
+class ShopProductPurchaserList(ArrayModel):
+    _submodel = ShopProductPurchaser
 
 
 class ShopProductSKU(Model):
@@ -8,6 +19,17 @@ class ShopProductSKU(Model):
         'account': Account,
         'activity': Account
     }
+
+    def purchaser_list(self):
+        data = ShopProductPurchaserParser.fetch(
+            self._eactivities,
+            id=self._parent._parent.id,
+            year=self._parent._parent._arguments['year'],
+            club_id=self._parent._parent._arguments['club_id'],
+            sku_name=self.name
+        )
+
+        return ShopProductPurchaserList(eactivities=self._eactivities, parser=ShopProductPurchaserParser, data=data, parent=self)
 
 
 class ShopProductSKUs(ArrayModel):
@@ -30,6 +52,11 @@ class ShopProduct(LazyModelMixin, Model):
         'sale_period': SalePeriod,
         'product_image': Image
     }
+
+    def purchaser_list(self):
+        data = ShopProductPurchaserParser.fetch(self._eactivities, id=self.id, year=self._arguments['year'], club_id=self._arguments['club_id'])
+
+        return ShopProductPurchaserList(eactivities=self._eactivities, parser=ShopProductPurchaserParser, data=data, parent=self)
 
 
 class ShopProducts(LazyDictFromArrayModel):

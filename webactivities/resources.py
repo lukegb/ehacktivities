@@ -285,6 +285,29 @@ class Product(Resource):
         return g.eactivities.club(club_id).shop(year).products()[id].marshal(lazy_load=False, trim_attributes=('club_id', 'year'))
 
 
+class ProductPurchasers(Resource):
+    def get(self, club_id, year, id):
+        return g.eactivities.club(club_id).shop(year).products()[id].purchaser_list().marshal()
+
+
+class ProductSKU(Resource):
+    def get(self, club_id, year, id, sku_id):
+        p = g.eactivities.club(club_id).shop(year).products()[id]
+        for sku in p.skus:
+            if sku.id == sku_id:
+                return sku.marshal(lazy_load=False, trim_attributes=('club_id', 'year'))
+        restful.abort(404)
+
+
+class ProductSKUPurchasers(Resource):
+    def get(self, club_id, year, id, sku_id):
+        p = g.eactivities.club(club_id).shop(year).products()[id]
+        for sku in p.skus:
+            if sku.id == sku_id:
+                return sku.purchaser_list().marshal(lazy_load=False, trim_attributes=('club_id', 'year'))
+        restful.abort(404)
+
+
 api.add_resource(Session, '/session')
 
 api.add_resource(Roles, '/roles')
@@ -312,3 +335,7 @@ api.add_resource(KeyList, '/clubs/<string:club_id>/<int:year>/keys/<string:id>')
 
 api.add_resource(Products, '/clubs/<string:club_id>/<int:year>/products')
 api.add_resource(Product, '/clubs/<string:club_id>/<int:year>/products/<string:id>')
+api.add_resource(ProductSKU, '/clubs/<string:club_id>/<int:year>/products/<string:id>/<string:sku_id>')
+
+api.add_resource(ProductPurchasers, '/clubs/<string:club_id>/<int:year>/products/<string:id>/purchasers')
+api.add_resource(ProductSKUPurchasers, '/clubs/<string:club_id>/<int:year>/products/<string:id>/<string:sku_id>/purchasers')
