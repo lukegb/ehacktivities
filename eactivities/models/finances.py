@@ -1,4 +1,4 @@
-from . import Model, LazyModelMixin, LazyDictFromArrayModel, ArrayModel, Account, Amount, Images, PdfableModelMixin
+from . import Model, LazyModelMixin, LazyDictFromArrayModel, ArrayModel, Account, Amount, Images, PdfableModelMixin, NoneableModelMixin
 from eactivities.parsers.finances import FinancesParser, BankingRecordsParser, SalesInvoicesParser, ClaimsParser, PurchaseOrdersParser, \
     TransactionCorrectionsParser, InternalChargesParser, MembersFundsRedistributionsParser, FundingRedistributionsParser
 
@@ -30,7 +30,7 @@ class Authoriser(Model):
     pass
 
 
-class NextAuthorisers(Model):
+class NextAuthorisers(NoneableModelMixin, Model):
     pass
 
 
@@ -191,7 +191,7 @@ class FundingRedistributions(FinancialDocumentCollection):
     _lazy_loader_parser = FundingRedistributionsParser
 
 
-class Finances(Model, LazyModelMixin):
+class Finances(LazyModelMixin, Model):
     _lazy_loader_parser = FinancesParser
     _attributes = [
         'funding_overview'

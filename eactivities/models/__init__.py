@@ -1,7 +1,7 @@
 import functools
 from collections import OrderedDict
 
-from .. import exceptions
+from .. import exceptions, utils
 
 
 COLLECTION_LAZY_LOAD_THRESHOLD = 4
@@ -27,7 +27,7 @@ class BaseModel(object):
     def __init__(self, eactivities, data, arguments=None, parent=None, parser=None, *args, **kwargs):
         if data is None and arguments is not None and parser is not None:
             data = parser.fetch(
-                eactivities=self._eactivities,
+                eactivities=eactivities,
                 **arguments
             )
         elif data is None:
@@ -46,6 +46,9 @@ class BaseModel(object):
 
         self.load(data)
 
+    def marshal(self, **kwargs):
+        return utils.marshal(self.dump(**kwargs))
+
     class DoesNotExist(exceptions.DoesNotExist):
         pass
 
@@ -62,15 +65,15 @@ class Model(BaseModel):
             setattr(self, k, v)
         self._data.update(**data)
 
-    def dump(self):
-        return self._data
+    def dump(self, trim_attributes=(), **kwargs):
+        return {k: v for (k, v) in self._data.iteritems() if k not in trim_attributes}
 
 
 class MockModel(BaseModel):
     def load(self, data):
         pass
 
-    def dump(self):
+    def dump(self, **kwargs):
         return {}
 
 
@@ -79,7 +82,10 @@ class CollectionModelMixin(object):
         return len(self._inner)
 
     def __getitem__(self, key):
-        return self._inner[key]
+        try:
+            return self._inner[key]
+        except KeyError as e:
+            raise self._submodel.DoesNotExist(e)
 
     def __setitem__(self, key, value):
         raise TypeError("Not allowed")
@@ -110,7 +116,7 @@ class StringModel(BaseModel):
     def load(self, data):
         pass
 
-    def dump(self):
+    def dump(self, **kwargs):
         return self._data
 
     def __str__(self):
@@ -140,8 +146,8 @@ class ArrayModel(CollectionModelMixin, BaseModel):
                 x = self._submodel(eactivities=self._eactivities, parser=self._parser, data=x, parent=self)
             self._inner.append(x)
 
-    def dump(self):
-        return [x.dump() if x is not None else x for x in self._inner]
+    def dump(self, **kwargs):
+        return [x.dump(**kwargs) if x is not None else x for x in self._inner]
 
 
 class DictModel(CollectionModelMixin, BaseModel):
@@ -165,8 +171,8 @@ class DictModel(CollectionModelMixin, BaseModel):
             i.append((k, v))
         self._inner = self._dictish(i)
 
-    def dump(self):
-        return self._dictish([(k, v.dump() if v is not None else v) for (k, v) in self._inner.iteritems()])
+    def dump(self, **kwargs):
+        return self._dictish([(k, v.dump(**kwargs) if v is not None else v) for (k, v) in self._inner.iteritems()])
 
     def items(self):
         return self._inner.items()
@@ -211,6 +217,11 @@ class LazyModelMixin(object):
                     return getattr(self, name)
         raise AttributeError("{} is not an attribute".format(name))
 
+    def dump(self, **kwargs):
+        if not self._lazy_loaded and kwargs.get('lazy_load', True):
+            self.perform_lazy_load()
+        return super(LazyModelMixin, self).dump(**kwargs)
+
 
 class LazyCollectionModelMixin(CollectionModelMixin):
     LAZY_FICTITIOUS_DATA = {'FICTITIOUS': True}
@@ -247,8 +258,8 @@ class LazyCollectionModelMixin(CollectionModelMixin):
             v._data.update(self._lazy_collection_data)
 
     @on_access_do_lazy_load
-    def dump(self):
-        return super(LazyCollectionModelMixin, self).dump()
+    def dump(self, **kwargs):
+        return super(LazyCollectionModelMixin, self).dump(**kwargs)
 
     def perform_full_lazy_load(self):
         if self._lazy_loaded:
@@ -263,19 +274,25 @@ class LazyCollectionModelMixin(CollectionModelMixin):
 
     def retrieve_item(self, key):
         if self._lazy_loaded:
-            return self._inner[key]
+            try:
+                return self._inner[key]
+            except KeyError as e:
+                raise self._submodel.DoesNotExist(e)
 
         self._lazy_load_count += 1
         if self._lazy_load_count > COLLECTION_LAZY_LOAD_THRESHOLD:
             self.perform_full_lazy_load()
-            return self._inner[key]
+            try:
+                return self._inner[key]
+            except KeyError as e:
+                raise self._submodel.DoesNotExist(e)
 
         d = dict(self._lazy_collection_data)
         d[self._lazy_id_attribute] = key
 
         data = self._lazy_loader_parser_instance.fetch_data(**d)
         if data is None:
-            raise KeyError("No such item")
+            raise self._submodel.DoesNotExist("No such item")
 
         return self._submodel(
             eactivities=self._eactivities, arguments={self._lazy_id_attribute: key}, parser=self._parser, data=data, parent=self
@@ -288,7 +305,10 @@ class LazyCollectionModelMixin(CollectionModelMixin):
     def __getitem__(self, key):
         if not self._lazy_loaded:
             return self.retrieve_item(key)
-        return self._inner[key]
+        try:
+            return self._inner[key]
+        except KeyError as e:
+            raise self._submodel.DoesNotExist(e)
 
     @on_access_do_lazy_load
     def __iter__(self):
@@ -351,8 +371,9 @@ class LazyDictFromArrayModel(LazyDictModel):
         new_data = self._dictish([(v['id'], v) for v in data])
         super(LazyDictFromArrayModel, self).load(new_data)
 
-    def dump(self):
-        return [x.dump() if x is not None else x for x in self._inner.values()]
+    @on_access_do_lazy_load
+    def dump(self, **kwargs):
+        return [x.dump(**kwargs) if x is not None else x for x in self._inner.values()]
 
 
 # LazyArrayModel is a lie

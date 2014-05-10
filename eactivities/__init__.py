@@ -4,6 +4,7 @@ import random
 import os
 
 import requests
+import requests.utils
 from bs4 import BeautifulSoup
 
 from . import exceptions, models, utils
@@ -32,7 +33,10 @@ class EActivities(object):
 
         if session is not None:
             # prime requests session
-            resp = self.session.get(BASE_PATH, cookies={SESSION_COOKIE_NAME: session})
+            self.session.cookies = requests.utils.add_dict_to_cookiejar(self.session.cookies, {
+                SESSION_COOKIE_NAME: session
+            })
+            resp = self.session.get(BASE_PATH)
 
             # don't check for loginArea because it shows up even if you're
             # logged in. "Log out" shows up there if you're logged in.

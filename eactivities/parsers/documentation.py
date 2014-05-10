@@ -2,7 +2,7 @@
 
 import re
 
-from .. import utils
+from .. import utils, exceptions
 from . import BaseParser
 
 EXEMPT_RE = re.compile("Exempt from")
@@ -16,6 +16,9 @@ class RecordDocumentParser(BaseParser):
         document_soup, _ = self.eactivities.load_and_start(
             '/admin/csp/documents/{}'.format(club_id)
         )
+
+        if document_soup.find("xmlcurrenttitle", text="NO RECORDS") is not None:
+            raise exceptions.AccessDenied("NO RECORDS found on page")
 
         main_soup = document_soup.find("div", class_="formenc")
         enc_tab = main_soup.find("enclosure", label=self.document_name)

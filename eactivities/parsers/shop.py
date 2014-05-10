@@ -23,6 +23,16 @@ class ShopParser(BaseParser):
             '/finance/income/shop/{}'.format(club_id)
         )
 
+        if document_soup.find("xmlcurrenttitle", text="NO RECORDS") is not None:
+            raise exceptions.AccessDenied("NO RECORDS found on page")
+
+        committee_box_soup = document_soup.find("insertfield", attrs={'name': 'Committee'})
+        if committee_box_soup is None:
+            raise exceptions.EActivitiesHasChanged("Can't find Committee text box")
+        _, got_club_id = utils.split_role(committee_box_soup.attrs['value'])
+        if got_club_id != club_id:
+            raise exceptions.AccessDenied("Access denied")
+
         # Edit Submitted Products
         esp_soup = document_soup.find("enclosure", label="Edit Submitted Products")
         if not esp_soup:
@@ -43,7 +53,7 @@ class ShopParser(BaseParser):
         y = utils.format_year(year)
         year_soup = csp_soup.find("tabenclosure", label=y)
         if not year_soup:
-            return None
+            raise exceptions.YearNotAvailable()
         if year_soup.attrs['active'] != 'true':
             self.eactivities.activate_tab(document_soup, year_soup.attrs['id'])
             year_soup = csp_soup.find("tabenclosure", label=y)

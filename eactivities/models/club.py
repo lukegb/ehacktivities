@@ -53,10 +53,10 @@ class ClubMembership(Model):
                 self._parent.documentation().key_lists()
             )
 
-        return ClubMembersList(eactivities=self._eactivities, data=data, parent=self)
+        return ClubMembersList(eactivities=self._eactivities, parser=MembersListParser, data=data, parent=self)
 
 
-class Club(Model, LazyModelMixin):
+class Club(LazyModelMixin, Model):
     _submodels = {
         'membership': ClubMembership
     }

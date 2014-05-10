@@ -228,7 +228,7 @@ class ClubFinanceTestCase(ClubBaseTestCase):
                 'status'
             ])
 
-            si.item_pdf(sil_zero_item['id'])
+            si.item_pdf(test_club_id, sil_zero_item['id'])
 
             if len(sil_zero_item['purchase_order_attachments']) > 1:
                 si.pdf(

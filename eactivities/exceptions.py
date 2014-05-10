@@ -225,7 +225,15 @@ class NotLoggedIn(AuthenticationFailed):
     pass
 
 
+class AccessDenied(EActivitiesException):
+    pass
+
+
 class DoesNotExist(EActivitiesException):
+    pass
+
+
+class YearNotAvailable(DoesNotExist):
     pass
 
 

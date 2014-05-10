@@ -110,3 +110,25 @@ def parse_datetime(date):
         return datetime.datetime.strptime(date, "%d/%m/%Y %H:%M")
     except UnicodeEncodeError:
         return None
+
+
+def marshal(data):
+    if isinstance(data, dict):
+        out = {}
+        for k, v in data.iteritems():
+            out[marshal(k)] = marshal(v)
+        return out
+    elif isinstance(data, list):
+        out = []
+        for v in data:
+            out.append(marshal(v))
+        return out
+    elif isinstance(data, decimal.Decimal):
+        # assume money
+        return output_money(data)
+    elif isinstance(data, datetime.datetime) or \
+            isinstance(data, datetime.date) or \
+            isinstance(data, datetime.time):
+        return data.isoformat()
+    else:
+        return data

@@ -174,7 +174,7 @@ class LazyDictModelTestCase(unittest.TestCase):
         self.assertEquals(m['ghi'].mno, 'pqr')
         self.assertEquals(m['xyz'].xyz.aaa, 'bbb')
 
-        with self.assertRaises(KeyError):
+        with self.assertRaises(TestModel.DoesNotExist):
             m['ppp']
         with self.assertRaises(AttributeError):
             m['abc'].ghi
@@ -191,7 +191,7 @@ class LazyDictFromArrayModelTestCase(unittest.TestCase):
         self.assertEquals(m['ghi'].mno, 'pqr')
         self.assertEquals(m['xyz'].xyz.aaa, 'bbb')
 
-        with self.assertRaises(KeyError):
+        with self.assertRaises(TestModel.DoesNotExist):
             m['ppp']
         with self.assertRaises(AttributeError):
             m['abc'].ghi

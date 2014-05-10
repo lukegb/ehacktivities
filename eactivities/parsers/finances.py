@@ -61,6 +61,9 @@ class FinancialDocumentationParser(BaseParser):
             '/finance/documents/{}'.format(club_id)
         )
 
+        if document_soup.find("xmlcurrenttitle", text="NO RECORDS") is not None:
+            raise exceptions.AccessDenied("NO RECORDS found on page")
+
         year_enc = document_soup.find("div", class_="formenc").find(
             "enclosure", recursive=False
         )
@@ -71,7 +74,7 @@ class FinancialDocumentationParser(BaseParser):
         y = utils.format_year(year)
         year_tab = year_enc.find("tabenclosure", label=y)
         if not year_tab:
-            raise self.DoesNotExist("Couldn't find year {}".format(y))
+            raise self.YearNotAvailable("Couldn't find year {}".format(y))
         if year_tab.attrs['active'] != 'true':
             self.eactivities.activate_tab(document_soup, year_tab.attrs['id'])
 
@@ -160,10 +163,11 @@ class FinancialDocumentationParser(BaseParser):
             # no records
             raise self.DoesNotExist("No document with ID {}".format(item_id))
 
-        row_item = list_enclosure.find("infotablecell", text=unicode(item_id)).find_parent("infotablerow")
+        row_item = list_enclosure.find("infotablecell", text=unicode(item_id))
         if row_item is None:
             # this item doesn't exist
             raise self.DoesNotExist("No document with ID {}".format(item_id))
+        row_item = row_item.find_parent("infotablerow")
 
         if not self.item_needs_row:
             return self.parse_item(
@@ -344,9 +348,9 @@ class SalesInvoicesParser(FinancialDocumentationParser):
 
         return data
 
-    def item_pdf(self, item_id, **kwargs):
+    def item_pdf(self, item_id, club_id, **kwargs):
         # prime $_SESSION
-        self.eactivities.load_and_start('/finance/documents')
+        self.eactivities.load_and_start('/finance/documents/{}'.format(club_id))
 
         # and get the invoice PDF!
         return self.eactivities.streaming_get('/finance/documents/invoices/pdf/%s' % (unicode(item_id),))
@@ -490,12 +494,12 @@ class PurchaseOrdersParser(FinancialDocumentationParser):
 
         return data
 
-    def item_pdf(self, item_id, **kwargs):
+    def item_pdf(self, item_id, club_id, **kwargs):
         # prime the session
-        self.eactivities.load_and_start('/finance/documents')
+        self.eactivities.load_and_start('/finance/documents/{}'.format(club_id))
 
         # and get the PO PDF!
-        return self.eactivities.streaming_get('/finance/documents/orders/pdf/%d' % (item_id,))
+        return self.eactivities.streaming_get('/finance/documents/orders/pdf/%s' % (unicode(item_id),))
 
     class DoesNotExist(FinancialDocumentationParser.DoesNotExist):
         pass
