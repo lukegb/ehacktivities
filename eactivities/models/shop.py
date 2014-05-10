@@ -54,7 +54,9 @@ class ShopProduct(LazyModelMixin, Model):
     }
 
     def purchaser_list(self):
-        data = ShopProductPurchaserParser.fetch(self._eactivities, id=self.id, year=self._arguments['year'], club_id=self._arguments['club_id'])
+        data = ShopProductPurchaserParser.fetch(
+            self._eactivities, id=self.id, year=self._arguments['year'], club_id=self._arguments['club_id']
+        )
 
         return ShopProductPurchaserList(eactivities=self._eactivities, parser=ShopProductPurchaserParser, data=data, parent=self)
 
