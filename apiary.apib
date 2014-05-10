@@ -131,7 +131,7 @@ Resource for representing CSPs.
 ### Get list of clubs [GET]
 + Response 200 (application/json)
 
-        { "411": {"id": 411, "name": "ICU Cinema"} }
+        [ {"id": 411, "name": "ICU Cinema"} ]
     
 ## Club [/clubs/{id}]
 ### Get club details [GET]
@@ -241,22 +241,22 @@ It is believed that internal charges can only have the following statuses:
 ### Get list of club's internal charges [GET]
 + Response 200 (application/json)
 
-        {
-            "2151": {
+        [
+            {
                 "id": 2151,
                 "charged_committee": {"id": 411, "name": "A&amp;E ICU Cinema"},
                 "receiving_committee": {"id": 406, "name": "A&amp;E Dramatic Society"},
                 "gross_amount": 9000,
                 "status": "PENDING"
             },
-            "2152": {
+            {
                 "id": 2152,
                 "charged_committee": {"id": 406, "name": "A&amp;E Dramatic Society"},
                 "receiving_committee": {"id": 411, "name": "A&amp;E ICU Cinema"},
                 "gross_amount": 200,
                 "status": "COMPLETED"
             },
-        }
+        ]
         
 ## Club Internal Charge Detail [/clubs/{id}/{year}/finances/internal-charges/{charge-id}]
 ### Get internal charge detail [GET]
@@ -290,13 +290,13 @@ It is believed that transaction corrections can only have the following statuses
 ### Get list of club's transaction corrections [GET]
 + Response 200 (application/json)
 
-        {
-            "2151": {
+        [
+            {
                 "id": 2151,
                 "status": "COMPLETED",
                 "gross_amount": 9000
             },
-        }
+        ]
         
 ## Club Transaction Correction Detail [/clubs/{id}/{year}/finances/transaction-corrections/{correction-id}]
 ### Get detail on a transaction correction [GET]
@@ -327,8 +327,8 @@ It is believed that purchase orders can only have the following statuses:
 ### Get list of club's POs [GET]
 + Response 200 (application/json)
 
-        {
-            "15000": {
+        [
+            {
                 "id": 15000,
                 "supplier": {"name": "EINPROGRESS Inc."},
                 "status": "COMPLETED",
@@ -338,7 +338,7 @@ It is believed that purchase orders can only have the following statuses:
                 "payment_date": "2014-01-01",
                 "gross_amount": 9000
             }
-        }
+        ]
         
 ## Club Purchase Order Detail [/clubs/{id}/{year}/finances/purchase-orders/{po-id}]
 ### Get purchase order detail [GET]
@@ -382,15 +382,15 @@ It is believed that claims can only have the following statuses:
 ### Get list of club's claims [GET]
 + Response 200 (application/json)
 
-        {
-            "15000": {
+        [
+            {
                 "id": 15000,
                 "person": "Luke Granger-Brown",
                 "status": "COMPLETED",
                 "payment_date": "2014-01-01",
                 "gross_amount": 9000
             }
-        }
+        ]
         
 ## Club Claim Detail [/clubs/{id}/{year}/finances/claims/{claim-id}]
 ### Get claim detail [GET]
@@ -418,9 +418,9 @@ It is believed that claims can only have the following statuses:
 ### Get banking records [GET]
 + Response 200 (application/json)
 
-        {
-            "15000": {"id": 15000, "gross_amount": 102299}
-        }
+        [
+            {"id": 15000, "gross_amount": 102299}
+        ]
         
 ## Club Banking Records Detail [/clubs/{id}/{year}/finances/banking-records/{record-id}]
 ### Get banking record detail [GET]
@@ -450,8 +450,8 @@ It is believed that sales invoices can only have the following statuses:
 ### Get club sales invoices [GET]
 + Response 200 (application/json)
 
-        {
-            "15000": {
+        [
+            {
                 "id": 15000,
                 "date": "2014-01-01",
                 "customer": {
@@ -461,7 +461,7 @@ It is believed that sales invoices can only have the following statuses:
                 "status": "COMPLETED",
                 "gross_amount": 900
             }
-        }
+        ]
         
 ## Club Sales Invoice Detail [/clubs/{id}/{year}/finances/sales-invoices/{invoice-id}]
 ### Get a club sales invoice [GET]
@@ -574,8 +574,8 @@ Note that this only affects anything if you have multiple SKUs.
 ### Get a list of available shop products [GET]
 + Response 200 (application/json)
 
-        {
-            "4604": {
+        [
+            {
                 "name": "My Favourite Cat",
                 "submitted_by": "Anthony Smith",
                 "product_type": "WORLD",
@@ -586,7 +586,7 @@ Note that this only affects anything if you have multiple SKUs.
                 "transferred": true,
                 "inactive": true
             }
-        }
+        ]
         
 ## Club Shop Product [/clubs/{id}/{year}/products/{product-id}]
 ### Get information on a specific shop product [GET]
@@ -640,9 +640,9 @@ Note that this only affects anything if you have multiple SKUs.
 ### Get information about a club's assets [GET]
 + Response 200 (application/json)
 
-        {
-            "14": [Club Asset][]
-        }
+        [
+            [Club Asset][]
+        ]
     
     
 ## Club Asset Information [/clubs/{id}/{year}/assets/{asset-id}]
@@ -677,9 +677,9 @@ Note that this only affects anything if you have multiple SKUs.
 ### Get information about a club's acknowledged risks [GET]
 + Response 200 (application/json)
 
-        {
-            "102": [Club Risk][]
-        }
+        [
+            [Club Risk][]
+        ]
         
 ## Club Risk [/clubs/{id}/{year}/risks/{risk-id}]
 ### Get information about a club's risk [GET]
