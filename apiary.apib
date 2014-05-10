@@ -603,8 +603,9 @@ Note that this only affects anything if you have multiple SKUs.
             "page_order": 0,
             "max_purchases_per_person": 0,
             "product_image": null,
-            "skus": {
-                1656: {
+            "skus": [
+                {
+                    "id": "111-1",
                     "name": "My Favourite Cat",
                     "account": {"id": 580, "name": "Ticket Income"},
                     "activity": {"id": 0, "name": "General"},
@@ -614,9 +615,79 @@ Note that this only affects anything if you have multiple SKUs.
                     "vat_rate": [VAT Rate][],
                     "requires_collection": false
                 }
-            }
+            ]
         }
         
+## Club Shop Product Purchasers [/clubs/{id}/{year}/products/{product-id}/purchasers]
+### Get the list of those who purchased a particular shop product [GET]
++ Response 200 (application/json)
+
+        [
+            {
+                "first_name": "Jeff",
+                "last_name": "Bridges",
+                "cid": "01234567",
+                "date": "2013-02-02",
+                "email": "jeff.bridges@madeup.ac.uk",
+                "login": "jb2210",
+                "order_no": "155252",
+                "price": {
+                    "gross": 1000
+                },
+                "product_name": "Some Product",
+                "quantity": {
+                    "collected": null,
+                    "ordered": 1,
+                },
+                "unit_price": {
+                    "gross": 1000
+                }
+            }
+        ]
+        
+## Club Shop Product SKU [/clubs/{id}/{year}/products/{product-id}/{sku-id}]
+### Get information on a shop product's SKU [GET]
++ Response 200 (application/json)
+
+        {
+            "id": "111-1",
+            "name": "My Favourite Cat",
+            "account": {"id": 580, "name": "Ticket Income"},
+            "activity": {"id": 0, "name": "General"},
+            "unit_gross_price": 1000,
+            "quantity": 100,
+            "unlimited_quantity": false,
+            "vat_rate": [VAT Rate][],
+            "requires_collection": false
+        }
+        
+## Club Shop Product SKU Purchasers [/clubs/{id}/{year}/products/{product-id}/{sku-id}/purchasers]
+### Get the list of those who purchased a particular shop product's SKU [GET]
++ Response 200 (application/json)
+
+        [
+            {
+                "first_name": "Jeff",
+                "last_name": "Bridges",
+                "cid": "01234567",
+                "date": "2013-02-02",
+                "email": "jeff.bridges@madeup.ac.uk",
+                "login": "jb2210",
+                "order_no": "155252",
+                "price": {
+                    "gross": 1000
+                },
+                "product_name": "Some Product",
+                "quantity": {
+                    "collected": null,
+                    "ordered": 1,
+                },
+                "unit_price": {
+                    "gross": 1000
+                }
+            }
+        ]
+
 # Group Club Assets
 
 ## Club Asset
